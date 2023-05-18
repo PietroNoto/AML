@@ -1,0 +1,12 @@
+Best trial:
+Value:  611.653431
+Params: 
+    gamma: 0.9
+    learning_rate: 0.00090115557310882
+    batch_size: 2048
+    buffer_size: 1000000
+    learning_starts: 0
+    train_freq: 256
+    tau: 0.08
+    log_std_init: 0.21729247498810936
+    net_arch: big
