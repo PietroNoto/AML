@@ -9,4 +9,4 @@ Params:
     train_freq: 512
     tau: 0.02
     log_std_init: -1.0190626611671032
-    net_arch: small
+    net_arch: small 

@@ -10,3 +10,16 @@ Params:
     tau: 0.08
     log_std_init: 0.21729247498810936
     net_arch: big
+
+Best trial:
+Value:  1220.3484014
+Params: 
+    gamma: 0.995
+    learning_rate: 0.0003620894132244536
+    batch_size: 2048
+    buffer_size: 100000
+    learning_starts: 1000
+    train_freq: 512
+    tau: 0.005
+    log_std_init: -3.064007572504874
+    net_arch: small
