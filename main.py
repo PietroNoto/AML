@@ -5,6 +5,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.sac.policies import MlpPolicy
 from stable_baselines3.common.monitor import Monitor
 from os.path import exists
+import numpy as np
 
 
 class Model:
@@ -16,6 +17,10 @@ class Model:
         self.test_env_name = test_env_name
         self.train_env = Monitor(gym.make(train_env_name))
         self.test_env = Monitor(gym.make(test_env_name))
+
+
+    def enable_udr(self):
+        self.train_env.enable_udr()
 
 
     def train(self, timesteps = 50000, **hyperparams):
@@ -30,6 +35,7 @@ class Model:
             self.model = SAC(MlpPolicy, self.train_env, verbose = 1, **hyperparams)
             self.model.learn(total_timesteps = timesteps, log_interval = 20)
             self.model.save(arch_name)
+
 
 
     def test(self, n_eval = 50):
@@ -48,10 +54,13 @@ class Model:
 
 if __name__ == '__main__':
 
+    
     #Source-source
     ss_model = Model("CustomHopper-source-v0", "CustomHopper-source-v0")
+    ss_model.enable_udr()
     ss_model.train(50000, learning_rate = 0.003)
     ss_model.test(50)
+    
 
     #Source-target
     st_model = Model("CustomHopper-source-v0", "CustomHopper-target-v0")
@@ -62,4 +71,7 @@ if __name__ == '__main__':
     tt_model = Model("CustomHopper-target-v0", "CustomHopper-target-v0")
     tt_model.train(50000, learning_rate = 0.003)
     tt_model.test(50)
+
+    #Re-train source environment using UDR
+    ss_model.enable_udr()
     

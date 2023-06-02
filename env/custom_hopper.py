@@ -1,5 +1,6 @@
 """Implementation of the Hopper environment supporting
 domain randomization optimization."""
+
 import csv
 import pdb
 from copy import deepcopy
@@ -10,37 +11,61 @@ from gym import utils
 from .mujoco_env import MujocoEnv
 from scipy.stats import truncnorm
 
+
 class CustomHopper(MujocoEnv, utils.EzPickle):
+
+
     def __init__(self, domain=None):
+
         MujocoEnv.__init__(self, 4)
         utils.EzPickle.__init__(self)
 
         self.original_masses = np.copy(self.sim.model.body_mass[1:])    # Default link masses
+        self.useDomainRand = False
 
         if domain == 'source':  # Source environment has an imprecise torso mass (1kg shift)
             self.sim.model.body_mass[1] -= 1.0
+
+
+    def enable_udr(self):
+        self.useDomainRand = True
+        self.random_masses = {k : np.random.uniform(1, 5, 5) for k in range(3)}
+        print(self.random_masses)
+
+
+    def disable_udr(self):
+        self.useDomainRand = False
+        self.sim.model.body_mass[1:] = self.original_masses
 
 
     def set_random_parameters(self):
         """Set random masses
         TODO
         """
-        self.set_parameters(*self.sample_parameters())
+        self.set_parameters(self.sample_parameters())
+
 
     def sample_parameters(self):
         """Sample masses according to a domain randomization distribution
         TODO
         """
-        return
+        torso_mass = self.sim.model.body_mass[1]
+        pos = np.random.randint(0, len(self.random_masses[0]))
+        masses = [torso_mass] + [self.random_masses[k][pos] for k in self.random_masses]
+        
+        return masses
+
 
     def get_parameters(self):
         """Get value of mass for each link"""
         masses = np.array( self.sim.model.body_mass[1:] )
         return masses
 
+
     def set_parameters(self, task):
         """Set each hopper link's mass to a new value"""
         self.sim.model.body_mass[1:] = task
+
 
     def step(self, a):
         """Step the simulation to the next timestep
@@ -75,6 +100,12 @@ class CustomHopper(MujocoEnv, utils.EzPickle):
         qpos = self.init_qpos + self.np_random.uniform(low=-.005, high=.005, size=self.model.nq)
         qvel = self.init_qvel + self.np_random.uniform(low=-.005, high=.005, size=self.model.nv)
         self.set_state(qpos, qvel)
+
+        if self.useDomainRand is True:
+            self.set_random_parameters()
+
+        #print(self.sim.model.body_mass)
+
         return self._get_obs()
 
     def viewer_setup(self):
