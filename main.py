@@ -5,7 +5,6 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.sac.policies import MlpPolicy
 from stable_baselines3.common.monitor import Monitor
 from os.path import exists
-import numpy as np
 
 
 class Model:
@@ -17,10 +16,6 @@ class Model:
         self.test_env_name = test_env_name
         self.train_env = Monitor(gym.make(train_env_name))
         self.test_env = Monitor(gym.make(test_env_name))
-
-
-    def enable_udr(self):
-        self.train_env.enable_udr()
 
 
     def train(self, timesteps = 50000, **hyperparams):
@@ -37,6 +32,19 @@ class Model:
             self.model.save(arch_name)
 
 
+    def train_udr(self, timesteps = 50000, n_distr = 3, **hyperparams):
+
+        if n_distr <= 0:
+            return
+        else:
+            arch_name = "SAC_source_env_udr"
+            if exists(arch_name + '.zip'):
+                self.model = SAC.load(arch_name)
+            else:
+                self.model = SAC(MlpPolicy, self.train_env, verbose = 1, **hyperparams)
+                self.model.learn(total_timesteps = timesteps, log_interval = 20)
+                self.model.save(arch_name)
+        
 
     def test(self, n_eval = 50):
 
@@ -54,24 +62,28 @@ class Model:
 
 if __name__ == '__main__':
 
+    n_test_eps = 50
+    n_timesteps = 50000
+    lr = 0.001
+    n_distr = 3
     
     #Source-source
     ss_model = Model("CustomHopper-source-v0", "CustomHopper-source-v0")
-    ss_model.enable_udr()
-    ss_model.train(50000, learning_rate = 0.003)
-    ss_model.test(50)
+    ss_model.train(n_timesteps, learning_rate = lr)
+    ss_model.test(n_test_eps)
     
-
     #Source-target
     st_model = Model("CustomHopper-source-v0", "CustomHopper-target-v0")
-    st_model.train(50000, learning_rate = 0.003)
-    st_model.test(50)
+    st_model.train(n_timesteps, learning_rate = lr)
+    st_model.test(n_test_eps)
 
     #Target-target
     tt_model = Model("CustomHopper-target-v0", "CustomHopper-target-v0")
-    tt_model.train(50000, learning_rate = 0.003)
-    tt_model.test(50)
+    tt_model.train(n_timesteps, learning_rate = lr)
+    tt_model.test(n_test_eps)
 
     #Re-train source environment using UDR
-    ss_model.enable_udr()
+    ss_udr = Model("CustomHopper-source-v0", "CustomHopper-source-v0")
+    ss_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
+    ss_udr.test(n_test_eps)
     
