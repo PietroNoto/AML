@@ -42,6 +42,7 @@ class Model:
                 self.model = SAC.load(arch_name)
             else:
                 self.model = SAC(MlpPolicy, self.train_env, verbose = 1, **hyperparams)
+                self.train_env.enable_udr()
                 self.model.learn(total_timesteps = timesteps, log_interval = 20)
                 self.model.save(arch_name)
         
@@ -64,7 +65,7 @@ if __name__ == '__main__':
 
     n_test_eps = 50
     n_timesteps = 50000
-    lr = 0.001
+    lr = 0.0003
     n_distr = 3
     
     #Source-source
