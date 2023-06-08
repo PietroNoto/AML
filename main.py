@@ -65,26 +65,32 @@ if __name__ == '__main__':
 
     n_test_eps = 50
     n_timesteps = 50000
-    lr = 0.0003
+    lr = 0.003
     n_distr = 3
     
     #Source-source
     ss_model = Model("CustomHopper-source-v0", "CustomHopper-source-v0")
     ss_model.train(n_timesteps, learning_rate = lr)
-    ss_model.test(n_test_eps)
+    #ss_model.test(n_test_eps)
     
     #Source-target
     st_model = Model("CustomHopper-source-v0", "CustomHopper-target-v0")
     st_model.train(n_timesteps, learning_rate = lr)
-    st_model.test(n_test_eps)
+    #st_model.test(n_test_eps)
 
     #Target-target
     tt_model = Model("CustomHopper-target-v0", "CustomHopper-target-v0")
     tt_model.train(n_timesteps, learning_rate = lr)
-    tt_model.test(n_test_eps)
+    #tt_model.test(n_test_eps)
 
-    #Re-train source environment using UDR
+    #Source-source using UDR
     ss_udr = Model("CustomHopper-source-v0", "CustomHopper-source-v0")
     ss_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
     ss_udr.test(n_test_eps)
+
+    #Source-target using UDR
+    st_udr = Model("CustomHopper-source-v0", "CustomHopper-target-v0")
+    st_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
+    st_udr.test(n_test_eps)
+
     
