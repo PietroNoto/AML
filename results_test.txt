@@ -55,4 +55,4 @@ udr8: [4.949], [4.857], [4.723] -> ss: 1026.90 +/- 37.49, st: 828.24 +/- 44.77
 
 udr11 picked randomly in [1, 5] after each episode: ss: 211.61 +/- 1.85, st: 217.48 +/- 1.98 
 
-udr12 picked randomly in [1, 5] after each episode: ss: 211.210.88 +/- 1.91, st: 217.60 +/- 1.87 
+udr12 picked randomly in [1, 5] after each episode: ss: 210.88 +/- 1.91, st: 217.60 +/- 1.87 

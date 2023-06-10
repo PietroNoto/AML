@@ -43,7 +43,7 @@ class Model:
 
     def train_udr(self, arch_name = None, timesteps = 50000, n_distr = 3, **hyperparams):
 
-        if n_distr <= 0:
+        if n_distr < 0:
             return
         elif arch_name is None: 
             arch_name = "SAC_"
@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
     #Target-target
     tt_model = Model("CustomHopper-target-v0", "CustomHopper-target-v0")
-    tt_model.train(n_timesteps, learning_rate = lr)
+    #tt_model.train(n_timesteps, learning_rate = lr)
     #tt_model.test(n_test_eps)
 
     #Source-source using UDR
