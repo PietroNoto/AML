@@ -1,14 +1,14 @@
 import gym
+from CNN import VisionWrapper
 from env.custom_hopper import *
 from stable_baselines3 import SAC
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.sac.policies import MlpPolicy
+from stable_baselines3.sac.policies import MlpPolicy, CnnPolicy
 from stable_baselines3.common.monitor import Monitor
 from os.path import exists
 
 
 class Model:
-
 
     def __init__(self, train_env_name: str, test_env_name: str):
         
@@ -59,9 +59,7 @@ class Model:
             self.model = SAC.load(arch_name)
             self.test_env.reset()
             self.mean_reward, self.std_reward = evaluate_policy(self.model, self.test_env, n_eval_episodes = n_eval, deterministic = True)
-            print(f"mean_reward={self.mean_reward:.2f} +/- {self.std_reward:.2f}")
-
-            
+            print(f"mean_reward={self.mean_reward:.2f} +/- {self.std_reward:.2f}") 
 
 if __name__ == '__main__':
 
@@ -94,7 +92,14 @@ if __name__ == '__main__':
     #Source-target using UDR
     st_udr = Model("CustomHopper-source-v0", "CustomHopper-target-v0")
     #st_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
-    #st_udr.train_udr(n_timesteps, 0, 1, 5, learning_rate = lr)
+    st_udr.train_udr(n_timesteps, 0, 1, 5, learning_rate = lr)
     #st_udr.test(n_test_eps)
-
+    
+    #Source-source using CNN
+    env = VisionWrapper(gym.make("CustomHopper-source-v0"))
+    #vis_ss_model = SAC(CnnPolicy, env, verbose = 1, buffer_size=10000)
+    #vis_ss_model.learn(n_timesteps, log_interval=20, progress_bar=True)
+    #vis_ss_model.save("SAC_CNN_source_env")
+    #mean_reward, std_reward = evaluate_policy(vis_ss_model, env, n_eval_episodes = n_test_eps, deterministic = True)
+    #print(f"mean_reward={mean_reward:.2f} +/- {std_reward:.2f}") 
     
