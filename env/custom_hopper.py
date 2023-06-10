@@ -20,6 +20,9 @@ class CustomHopper(MujocoEnv, utils.EzPickle):
         MujocoEnv.__init__(self, 4)
         utils.EzPickle.__init__(self)
 
+
+        #self.observation_space = []
+
         self.original_masses = np.copy(self.sim.model.body_mass[1:])    # Default link masses
         self.useDomainRand = False
 
@@ -29,13 +32,17 @@ class CustomHopper(MujocoEnv, utils.EzPickle):
 
     def enable_udr(self, n_distr = 3):
         self.useDomainRand = True
-        #self.random_masses = {k : np.random.uniform(1, 5, n_distr) for k in range(3)}
+        self.random_masses = {k : np.random.uniform(1, 5, n_distr) for k in range(3)}
         #print(self.random_masses)
 
 
     def disable_udr(self):
         self.useDomainRand = False
         self.sim.model.body_mass[1:] = self.original_masses
+
+
+    def isUDR(self):
+        return self.useDomainRand
 
 
     def set_random_parameters(self):
