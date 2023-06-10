@@ -83,25 +83,22 @@ class Model:
         self.arch_name = arch_name
 
 
-    def train_udr(self, arch_name = None, timesteps = 50000, n_distr = 3, **hyperparams):
+    def train_udr(self, timesteps = 50000, n_distr = 0, lower = 1, upper = 5, **hyperparams):
 
         if n_distr < 0:
             return
-        elif arch_name is None: 
-            arch_name = "SAC_"
-            if self.train_env_name == "CustomHopper-source-v0":
-                arch_name += "s_"
-            elif self.train_env_name == "CustomHopper-target-v0":
-                arch_name += "t_"
-            arch_name = arch_name + str(hyperparams["learning_rate"]) + '_' + str(timesteps) + "_UDR"
-            self.model = SAC(MlpPolicy, self.train_env, verbose = 1, **hyperparams)
-            self.train_env.enable_udr()
-            self.model.learn(total_timesteps = timesteps, log_interval = 20)
-            self.model.save(arch_name) 
-        elif exists(arch_name):
-            self.model = SAC.load(arch_name)
-        self.arch_name = arch_name    
-        
+        else:
+            arch_name = "SAC_source_env_udr"
+            if exists(arch_name + '.zip'):
+                self.model = SAC.load(arch_name)
+            else:
+                self.model = SAC(MlpPolicy, self.train_env, verbose = 1, **hyperparams)
+                if n_distr == 0:
+                    self.train_env.enable_infinite_udr(lower, upper)
+                else:
+                    self.train_env.enable_finite_udr(n_distr)
+                self.model.learn(total_timesteps = timesteps, log_interval = 20)
+                self.model.save(arch_name)
 
     def test(self, n_eval = 50):
 
@@ -128,43 +125,33 @@ if __name__ == '__main__':
 
     
     #Source-source
-    print("Source-source:")
-    s_log_dir = "log_ss_" + str(lr) + "_" + str(n_timesteps)
-    ss_model = Model("CustomHopper-source-v0", "CustomHopper-source-v0",s_log_dir)
-    ss_model.train("SAC_s_0.03_50000", n_timesteps, learning_rate = lr)
-    ss_model.test(n_test_eps)
-    ss_model.plot_results()
+    ss_model = Model("CustomHopper-source-v0", "CustomHopper-source-v0")
+    #ss_model.train(n_timesteps, learning_rate = lr)
+    #ss_model.test(n_test_eps)
     
     #Source-target
-    print("Source-target")
-    s_log_dir = "log_st_" + str(lr) + "_" + str(n_timesteps)
-    st_model = Model("CustomHopper-source-v0", "CustomHopper-target-v0", s_log_dir)
-    st_model.train("SAC_s_0.03_50000", n_timesteps, learning_rate = lr)
-    st_model.test(n_test_eps)
-    #st_model.plot_results()
+    st_model = Model("CustomHopper-source-v0", "CustomHopper-target-v0")
+    #st_model.train(n_timesteps, learning_rate = lr)
+    #st_model.test(n_test_eps)
 
     #Target-target
-    print("Target-target:")
-    s_log_dir = "log_tt_" + str(lr) + "_" + str(n_timesteps)
-    tt_model = Model("CustomHopper-target-v0", "CustomHopper-target-v0", s_log_dir)
-    tt_model.train(n_timesteps, learning_rate = lr)
-    tt_model.test(n_test_eps)
-    tt_model.plot_results()
+    tt_model = Model("CustomHopper-target-v0", "CustomHopper-target-v0")
+    #tt_model.train(n_timesteps, learning_rate = lr)
+    #tt_model.test(n_test_eps)
 
     #Source-source using UDR
-    print("Source-source with UDR:")
-    t_log_dir = "log_ss_" + str(lr) + "_" + str(n_timesteps)
-    ss_udr = Model("CustomHopper-source-v0", "CustomHopper-source-v0", t_log_dir)
-    ss_udr.train_udr(None, n_timesteps, n_distr, learning_rate = lr)
-    ss_udr.test(n_test_eps)
+    ss_udr = Model("CustomHopper-source-v0", "CustomHopper-source-v0")
+    #ss_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
+    #ss_udr.train_udr(n_timesteps, 0, 1, 5, learning_rate = lr)
+    #ss_udr.test(n_test_eps)
 
     #Source-target using UDR
     print("Source-target with UDR:")
     t_log_dir = "log_st_" + str(lr) + "_" + str(n_timesteps)
     st_udr = Model("CustomHopper-source-v0", "CustomHopper-target-v0")
-    st_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
-    st_udr.train_udr("SAC_s_0.003_50_UDR", n_timesteps, n_distr, learning_rate = lr)
-    st_udr.test(n_test_eps)
+    #st_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
+    #st_udr.train_udr(n_timesteps, 0, 1, 5, learning_rate = lr)
+    #st_udr.test(n_test_eps)
 
     #Source-source using CNN
     env = VisionWrapper(gym.make("CustomHopper-source-v0"))
