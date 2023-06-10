@@ -13,8 +13,6 @@ from stable_baselines3.common.results_plotter import load_results, ts2xy
 from stable_baselines3.common import results_plotter
 import os
 import matplotlib.pyplot as plt
-
-
 def moving_average(values, window):
     """
     Smooth values by doing a moving average
@@ -24,7 +22,6 @@ def moving_average(values, window):
     """
     weights = np.repeat(1.0, window) / window
     return np.convolve(values, weights, 'valid')
-
 
 def plot_results(log_folder, title='Learning Curve',filename="train_plot"):
     """
@@ -38,7 +35,7 @@ def plot_results(log_folder, title='Learning Curve',filename="train_plot"):
     #y = moving_average(y, window=50)
     
     # Truncate x
-    #x = x[len(x) - len(y):]
+    x = x[len(x) - len(y):]
 
     fig,ax = plt.subplots()  #title
     ax.plot(x, y)
@@ -53,14 +50,10 @@ def plot_results(log_folder, title='Learning Curve',filename="train_plot"):
 
 class Model:
 
-<<<<<<< HEAD
     def __init__(self, train_env_name: str, test_env_name: str,log_folder:str):
-=======
-    def __init__(self, train_env_name: str, test_env_name: str):
->>>>>>> 5ed3b2d (Added CNN module and vision wrapper)
         
         self.log_folder = log_folder
-        os.makedirs(self.log_folder, exist_ok=True)
+        os.makedirs(self.log_dir, exist_ok=True)
 
         self.train_env_name = train_env_name
         self.test_env_name = test_env_name
@@ -111,17 +104,9 @@ class Model:
             self.test_env.reset()
             self.mean_reward, self.std_reward = evaluate_policy(self.model, self.test_env, n_eval_episodes = n_eval, deterministic = True)
             print(f"mean_reward={self.mean_reward:.2f} +/- {self.std_reward:.2f}") 
-<<<<<<< HEAD
-
 
     def plot_results(self):
-        e = "s" if self.test_env_name == "CustomHopper-source-v0" else "t"
-        filename = self.arch_name[:5] + e + self.arch_name[5:]
-        plot_results(log_folder=self.log_folder,filename = filename)
-
-
-=======
->>>>>>> 5ed3b2d (Added CNN module and vision wrapper)
+        plot_results(log_folder=self.log_folder,filename=self.arch_name)
 
 if __name__ == '__main__':
 
@@ -132,25 +117,30 @@ if __name__ == '__main__':
 
     
     #Source-source
-    ss_model = Model("CustomHopper-source-v0", "CustomHopper-source-v0")
-    #ss_model.train(n_timesteps, learning_rate = lr)
-    #ss_model.test(n_test_eps)
+    print("Source-source:")
+    s_log_dir="log_s_"+str(lr)+"_"+str(n_timesteps)
+    ss_model = Model("CustomHopper-source-v0", "CustomHopper-source-v0",s_log_dir)
+    ss_model.train(None, n_timesteps, learning_rate = lr)
+    ss_model.test(n_test_eps)
+    ss_model.plot_results()
     
     #Source-target
     st_model = Model("CustomHopper-source-v0", "CustomHopper-target-v0")
-    #st_model.train(n_timesteps, learning_rate = lr)
-    #st_model.test(n_test_eps)
+    st_model.train("SAC_s_0.003_50", n_timesteps, learning_rate = lr)
+    st_model.test(n_test_eps)
+    st_model.plot_results()
 
     #Target-target
     tt_model = Model("CustomHopper-target-v0", "CustomHopper-target-v0")
     #tt_model.train(n_timesteps, learning_rate = lr)
     #tt_model.test(n_test_eps)
+    #tt_model.plot_results()
 
     #Source-source using UDR
-    ss_udr = Model("CustomHopper-source-v0", "CustomHopper-source-v0")
-    #ss_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
-    #ss_udr.train_udr(n_timesteps, 0, 1, 5, learning_rate = lr)
-    #ss_udr.test(n_test_eps)
+    t_log_dir="log_t_"+str(lr)+"_"+str(n_timesteps)
+    ss_udr = Model("CustomHopper-source-v0", "CustomHopper-source-v0",t_log_dir)
+    ss_udr.train_udr(None, n_timesteps, n_distr, learning_rate = lr)
+    ss_udr.test(n_test_eps)
 
     #Source-target using UDR
     print("Source-target with UDR:")
