@@ -2,6 +2,7 @@
 domain randomization optimization."""
 
 import csv
+from enum import Enum
 import pdb
 from copy import deepcopy
 
@@ -11,6 +12,10 @@ from gym import utils
 from .mujoco_env import MujocoEnv
 from scipy.stats import truncnorm
 
+class Udr(Enum):
+    No = 0
+    Finite = 1
+    Infinite = 2
 
 class CustomHopper(MujocoEnv, utils.EzPickle):
 
@@ -21,20 +26,24 @@ class CustomHopper(MujocoEnv, utils.EzPickle):
         utils.EzPickle.__init__(self)
 
         self.original_masses = np.copy(self.sim.model.body_mass[1:])    # Default link masses
-        self.useDomainRand = False
+        self.useDomainRand = Udr.No
 
         if domain == 'source':  # Source environment has an imprecise torso mass (1kg shift)
             self.sim.model.body_mass[1] -= 1.0
 
 
-    def enable_udr(self, n_distr = 3):
-        self.useDomainRand = True
-        #self.random_masses = {k : np.random.uniform(1, 5, n_distr) for k in range(3)}
+    def enable_finite_udr(self, n_distr = 3):
+        self.useDomainRand = Udr.Finite
+        self.random_masses = {k : np.random.uniform(1, 5, n_distr) for k in range(3)}
         #print(self.random_masses)
 
+    def enable_infinite_udr(self, lower_bound, upper_bound):
+        self.useDomainRand = Udr.Infinite
+        self.lower_udr_bound = lower_bound
+        self.upper_udr_bound = upper_bound
 
     def disable_udr(self):
-        self.useDomainRand = False
+        self.useDomainRand = Udr.No
         self.sim.model.body_mass[1:] = self.original_masses
 
 
@@ -50,11 +59,14 @@ class CustomHopper(MujocoEnv, utils.EzPickle):
         TODO
         """
         torso_mass = self.sim.model.body_mass[1]
-        pos = np.random.randint(0, len(self.random_masses[0]))
-        masses = [torso_mass] + [self.random_masses[k][pos] for k in self.random_masses]
+        
+        if self.useDomainRand == Udr.Finite:
+            pos = np.random.randint(0, len(self.random_masses[0]))
+            masses = [torso_mass] + [self.random_masses[k][pos] for k in self.random_masses]
+        elif self.useDomainRand == Udr.Infinite:
+            masses = [torso_mass] + [np.random.uniform(self.lower_udr_bound, self.upper_udr_bound) for _ in self.sim.model.body_mass[2:]]
 
         #masses = [torso_mass] + list(np.random.uniform(1, 5, 3))
-
         return masses
 
 
@@ -103,7 +115,7 @@ class CustomHopper(MujocoEnv, utils.EzPickle):
         qvel = self.init_qvel + self.np_random.uniform(low=-.005, high=.005, size=self.model.nv)
         self.set_state(qpos, qvel)
 
-        if self.useDomainRand is True:
+        if self.useDomainRand is not Udr.No:
             self.set_random_parameters()
 
         #print(self.sim.model.body_mass)

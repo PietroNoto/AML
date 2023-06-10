@@ -32,9 +32,9 @@ class Model:
             self.model.save(arch_name)
 
 
-    def train_udr(self, timesteps = 50000, n_distr = 3, **hyperparams):
+    def train_udr(self, timesteps = 50000, n_distr = 0, lower = 1, upper = 5, **hyperparams):
 
-        if n_distr <= 0:
+        if n_distr < 0:
             return
         else:
             arch_name = "SAC_source_env_udr"
@@ -42,10 +42,12 @@ class Model:
                 self.model = SAC.load(arch_name)
             else:
                 self.model = SAC(MlpPolicy, self.train_env, verbose = 1, **hyperparams)
-                self.train_env.enable_udr()
+                if n_distr == 0:
+                    self.train_env.enable_infinite_udr(lower, upper)
+                else:
+                    self.train_env.enable_finite_udr(n_distr)
                 self.model.learn(total_timesteps = timesteps, log_interval = 20)
                 self.model.save(arch_name)
-        
 
     def test(self, n_eval = 50):
 
@@ -70,27 +72,29 @@ if __name__ == '__main__':
     
     #Source-source
     ss_model = Model("CustomHopper-source-v0", "CustomHopper-source-v0")
-    ss_model.train(n_timesteps, learning_rate = lr)
+    #ss_model.train(n_timesteps, learning_rate = lr)
     #ss_model.test(n_test_eps)
     
     #Source-target
     st_model = Model("CustomHopper-source-v0", "CustomHopper-target-v0")
-    st_model.train(n_timesteps, learning_rate = lr)
+    #st_model.train(n_timesteps, learning_rate = lr)
     #st_model.test(n_test_eps)
 
     #Target-target
     tt_model = Model("CustomHopper-target-v0", "CustomHopper-target-v0")
-    tt_model.train(n_timesteps, learning_rate = lr)
+    #tt_model.train(n_timesteps, learning_rate = lr)
     #tt_model.test(n_test_eps)
 
     #Source-source using UDR
     ss_udr = Model("CustomHopper-source-v0", "CustomHopper-source-v0")
-    ss_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
-    ss_udr.test(n_test_eps)
+    #ss_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
+    #ss_udr.train_udr(n_timesteps, 0, 1, 5, learning_rate = lr)
+    #ss_udr.test(n_test_eps)
 
     #Source-target using UDR
     st_udr = Model("CustomHopper-source-v0", "CustomHopper-target-v0")
-    st_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
-    st_udr.test(n_test_eps)
+    #st_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
+    #st_udr.train_udr(n_timesteps, 0, 1, 5, learning_rate = lr)
+    #st_udr.test(n_test_eps)
 
     
