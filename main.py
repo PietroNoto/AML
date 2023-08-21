@@ -1,156 +1,107 @@
 import gym
 from CNN import VisionWrapper
-from env.custom_hopper import *
-from stable_baselines3 import SAC
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.sac.policies import MlpPolicy, CnnPolicy
-from stable_baselines3.common.monitor import Monitor
+#from env.custom_hopper import *
+#from stable_baselines3 import SAC
+#from stable_baselines3.common.evaluation import evaluate_policy
+#from stable_baselines3.sac.policies import MlpPolicy, CnnPolicy
 from os.path import exists
 
-
-#plotting
-from stable_baselines3.common.results_plotter import load_results, ts2xy
-from stable_baselines3.common import results_plotter
+import argparse
 import os
-import matplotlib.pyplot as plt
 
-
-def moving_average(values, window):
-    """
-    Smooth values by doing a moving average
-    :param values: (numpy array)
-    :param window: (int)
-    :return: (numpy array)
-    """
-    weights = np.repeat(1.0, window) / window
-    return np.convolve(values, weights, 'valid')
-
-
-def plot_results(log_folder, title='Learning Curve',filename="train_plot"):
-    """
-    plot the results
-
-    :param log_folder: (str) the save location of the results to plot
-    :param title: (str) the title of the task to plot
-    """
-    x, y = ts2xy(load_results(log_folder), 'timesteps')
-    
-    #y = moving_average(y, window=50)
-    
-    # Truncate x
-    #x = x[len(x) - len(y):]
-
-    fig,ax = plt.subplots()  #title
-    ax.plot(x, y)
-    ax.set_xlabel('Number of Timesteps')
-    ax.set_ylabel('Rewards')
-    ax.set_title(title + " Smoothed")
-    #plt.show()
-    fig.savefig(filename+".png")
-
-
-
-
-class Model:
-
-    def __init__(self, train_env_name: str, test_env_name: str,log_folder:str):
-        
-        self.log_folder = log_folder
-        os.makedirs(self.log_folder, exist_ok=True)
-
-        self.train_env_name = train_env_name
-        self.test_env_name = test_env_name
-        self.train_env = Monitor(gym.make(train_env_name),self.log_folder)
-        self.test_env = Monitor(gym.make(test_env_name),self.log_folder)
-        self.arch_name = None
-
-
-    def train(self, arch_name = None, timesteps = 50000, **hyperparams):
-        
-        if arch_name is None:                       #it means that I don't have any trained models so I want to train a new one
-            arch_name = "SAC_"
-            if self.train_env_name == "CustomHopper-source-v0":
-                arch_name += "s_"
-            elif self.train_env_name == "CustomHopper-target-v0":
-                arch_name += "t_"
-            arch_name = arch_name + str(hyperparams["learning_rate"]) + '_' + str(timesteps)
-            self.model = SAC(MlpPolicy, self.train_env, verbose = 1, **hyperparams)
-            self.train_env.reset()
-            self.model.learn(total_timesteps = timesteps, log_interval = 10)
-            self.model.save(arch_name)   
-        elif exists(arch_name):
-            self.model = SAC.load(arch_name)
-        self.arch_name = arch_name
-
-
-    def train_udr(self, arch_name = None, timesteps = 50000, n_distr = 3, **hyperparams):
-
-        if n_distr < 0:
-            return
-        elif arch_name is None: 
-            arch_name = "SAC_"
-            if self.train_env_name == "CustomHopper-source-v0":
-                arch_name += "s_"
-            elif self.train_env_name == "CustomHopper-target-v0":
-                arch_name += "t_"
-            arch_name = arch_name + str(hyperparams["learning_rate"]) + '_' + str(timesteps) + "_UDR"
-            self.model = SAC(MlpPolicy, self.train_env, verbose = 1, **hyperparams)
-            self.train_env.enable_udr()
-            self.model.learn(total_timesteps = timesteps, log_interval = 20)
-            self.model.save(arch_name) 
-        elif exists(arch_name):
-            self.model = SAC.load(arch_name)
-        self.arch_name = arch_name    
-        
-
-    def test(self, n_eval = 50):
-
-        if exists(self.arch_name):
-            self.model = SAC.load(self.arch_name)
-            self.test_env.reset()
-            self.mean_reward, self.std_reward = evaluate_policy(self.model, self.test_env, n_eval_episodes = n_eval, deterministic = True)
-            print(f"mean_reward={self.mean_reward:.2f} +/- {self.std_reward:.2f}") 
-
-
-    def plot_results(self):
-        e = "s" if self.test_env_name == "CustomHopper-source-v0" else "t"
-        filename = self.arch_name[:5] + e + self.arch_name[5:]
-        plot_results(log_folder=self.log_folder,filename = filename)
-
+#logging
+#from stable_baselines3.common.monitor import Monitor
+#from stable_baselines3.common.logger i
+# mport configure
+from model import Model
 
 
 if __name__ == '__main__':
 
-    n_test_eps = 50
-    n_timesteps = 50000
-    lr = 0.03
-    n_distr = 3
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output-dir", type=str, help='Path where the model is saved', default="prova_vec_env")
+    parser.add_argument("--test-eps", type=int, help='Number of test episodes', default=50)
+    parser.add_argument("--lr", type=int, help='starting learning rate', default=7.3e-4)
+    parser.add_argument("--timesteps", type=int, help='number of max timesteps', default=1_000) #circa 23s ogni 1000 timesteps, 38m per 100_000,~ 6h per 1mln
+    parser.add_argument("--use_udr", type=bool, help='use udr flag', default=False)
+    parser.add_argument("--n-distr", type=int, help='number of udr distributions', default=3)
+    parser.add_argument("--source-env", type=str, help='source environment name', default="CustomHopper-source-v0")
+    parser.add_argument("--target-env", type=str, help='target environment name', default="CustomHopper-target-v0")
+    parser.add_argument("--checkpoint", type=str, help='path of a checkpoint file', default=None)
+    parser.add_argument("--lr-scheduling", type=str, help='learning rate scheduling', default="constant",
+                        choices=["constant","linear"]) #aggiungere "cosine"
+
+    args=parser.parse_args()
     
-    #Source-source
+    n_test_eps = args.test_eps #50
+    n_timesteps = args.timesteps #50_000
+    lr = args.lr #7.3e-4
+    n_distr = args.n_distr #3
+    source_env_name="CustomHopper-source-v0"
+    target_env_name="CustomHopper-target-v0"
+    use_udr=args.use_udr #False
+
+    #args:  train->plots: output-dir/  n_timesteps  lr  batch_size  checkpoint_file  policy [MLP, CNN]? <- argomenti
+    #                       checkpoints/
+    #                           checkpoint_1.pt ...   #serve callback, per allenamenti lunghi
+    #                       train_logs/progress.csv    #rinomina, per source e target
+    #                       plots/                    #distinguere source e plot anche qui
+    #                            source_train_plot.svg
+    #                            target_train_plot.svg
+    #       test -> spostare in un altro script che carica modello e testa
+
+    output_dir = args.output_dir
+    checkpoints_dir = os.path.join(output_dir, 'checkpoints')
+    logs_dir = os.path.join(output_dir, 'train_logs')
+
+    #se la cartella é già esistente si blocca, perderemmo i file di log, altrimenti crea la struttura
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+        os.mkdir(checkpoints_dir)
+        os.mkdir(logs_dir)
+    else:
+        if len(os.listdir(output_dir)) > 0:
+            raise FileExistsError('Output dir contains files')
+        else:
+            os.mkdir(checkpoints_dir)
+
+    #stampa file con gli iperparametri
+    with open(os.path.join(output_dir,'params.txt'), 'w') as param_file:
+        param_str="lr: "+str(lr)+\
+            "\nscheduling: "+args.lr_scheduling +\
+            "\ntotal steps: "+str(n_timesteps)+\
+            "\nsource env: "+source_env_name+\
+            "\ntarget env: "+target_env_name+\
+            "\nuse udr: "+str(use_udr)+\
+            "\ntest episodes: "+str(n_test_eps)
+        param_file.write(param_str)
+
+    #file con i risultati dell'esperimento
+    test_fp=open(os.path.join(output_dir,'test_results.txt'), 'w')
+
     print("Source-source:")
-    s_log_dir = "log_ss_" + str(lr) + "_" + str(n_timesteps)
-    ss_model = Model("CustomHopper-source-v0", "CustomHopper-source-v0",s_log_dir)
-    ss_model.train("SAC_s_0.03_50000", n_timesteps, learning_rate = lr)
-    ss_model.test(n_test_eps)
-    ss_model.plot_results()
-    
-    #Source-target
-    print("Source-target")
-    s_log_dir = "log_st_" + str(lr) + "_" + str(n_timesteps)
-    st_model = Model("CustomHopper-source-v0", "CustomHopper-target-v0", s_log_dir)
-    st_model.train("SAC_s_0.03_50000", n_timesteps, learning_rate = lr)
-    st_model.test(n_test_eps)
-    #st_model.plot_results()
+    s_model = Model(source_env_name, target_env_name,output_dir)
+    if args.checkpoint!=None: #non l'ho ancora testato, serve ad allenare a partire da un checkpoint
+        s_model.load_model()
+    s_model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling)
+    s_model.plot_results()
+    ss_mean_rew,ss_std_rew=s_model.test(test_env_name=source_env_name,n_eval=n_test_eps)
+    test_fp.write("Source-source: "+f"mean_reward={ss_mean_rew:.2f} +/- {ss_std_rew:.2f}")
+     
+    print("Source-target") #testa modello già allenato
+    st_mean_rew,st_std_rew=s_model.test(target_env_name,n_test_eps)
+    test_fp.write("\nSource-target: "+f"mean_reward={st_mean_rew:.2f} +/- {st_std_rew:.2f}")
 
-    #Target-target
     print("Target-target:")
-    s_log_dir = "log_tt_" + str(lr) + "_" + str(n_timesteps)
-    tt_model = Model("CustomHopper-target-v0", "CustomHopper-target-v0", s_log_dir)
-    tt_model.train(n_timesteps, learning_rate = lr)
-    tt_model.test(n_test_eps)
+    tt_model = Model(target_env_name, target_env_name, output_dir)
+    tt_model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling)
     tt_model.plot_results()
-
+    tt_mean_rew,tt_std_rew=tt_model.test(test_env_name=target_env_name,n_eval=n_test_eps)
+    test_fp.write("\ntarget-target: "+f"mean_reward={tt_mean_rew:.2f} +/- {tt_std_rew:.2f}")
+    
+    test_fp.close()
+    """
     #Source-source using UDR
     print("Source-source with UDR:")
     t_log_dir = "log_ss_" + str(lr) + "_" + str(n_timesteps)
@@ -173,5 +124,5 @@ if __name__ == '__main__':
     #vis_ss_model.save("SAC_CNN_source_env")
     #mean_reward, std_reward = evaluate_policy(vis_ss_model, env, n_eval_episodes = n_test_eps, deterministic = True)
     #print(f"mean_reward={mean_reward:.2f} +/- {std_reward:.2f}") 
-
+    """
     
