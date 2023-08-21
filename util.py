@@ -38,10 +38,10 @@ def moving_average(values, window):
     :return: (numpy array)
     """
     weights = np.repeat(1.0, window) / window
-    return np.convolve(values, weights, 'valid')
+    return np.convolve(values, weights, 'same')
 
 
-def plot_results(log_folder,train_env):
+def plot_results(log_folder,train_env,udr_prefix):
     """
     plot the results
 
@@ -57,7 +57,7 @@ def plot_results(log_folder,train_env):
     plot_folder=os.path.join(log_folder,"plots")
     if not os.path.isdir(plot_folder): os.mkdir(plot_folder)
 
-    x, y = ts2xy(load_results(os.path.join(log_folder,train_env+"_monitor_log")), 'timesteps') #legge tutti i file *monitor.csv, deve distinguere source e target!
+    x, y = ts2xy(load_results(os.path.join(log_folder,udr_prefix+train_env+"_monitor_log")), 'timesteps') #legge tutti i file *monitor.csv, deve distinguere source e target!
     
     #y = moving_average(y, window=50)
     # Truncate x
@@ -68,9 +68,9 @@ def plot_results(log_folder,train_env):
     ax.set_xlabel('timesteps')
     ax.set_ylabel('rewards')
     ax.set_title("learning curve")
-    fig.savefig(os.path.join(plot_folder,train_env+"monitor_learning_curve.svg"))
+    fig.savefig(os.path.join(plot_folder,udr_prefix+train_env+"monitor_learning_curve.svg"))
 
-    log_path=os.path.join(log_folder,"train_logs" ,train_env+'_train_log.csv' )
+    log_path=os.path.join(log_folder,"train_logs",udr_prefix+train_env+'_train_log.csv' )
 
     df = pandas.read_csv(log_path)
 
@@ -79,58 +79,67 @@ def plot_results(log_folder,train_env):
     ax.set_xlabel('timesteps')   #potremmo usare anche gli episodi, sotto
     ax.set_ylabel('mean episode rewards')
     ax.set_title("learning curve")
-    fig.savefig(os.path.join(plot_folder,train_env+"_learning_curve.svg"))
+    fig.savefig(os.path.join(plot_folder,udr_prefix+train_env+"_learning_curve.svg"))
 
     fig,ax = plt.subplots()
     ax.plot(df["time/episodes"],df["rollout/ep_rew_mean"])
     ax.set_xlabel('episodes')        #viene quasi uguale
     ax.set_ylabel('mean episode rewards')
     ax.set_title("episode learning curve")
-    fig.savefig(os.path.join(plot_folder,train_env+"_episode_learning_curve.svg"))
+    fig.savefig(os.path.join(plot_folder,udr_prefix+train_env+"_episode_learning_curve.svg"))
 
     fig,ax = plt.subplots()
     ax.plot(df["time/episodes"],df["rollout/ep_len_mean"])
     ax.set_xlabel('episodes')
     ax.set_ylabel('mean episode length') #time/time_elapsed
     ax.set_title("episodes length")
-    fig.savefig(os.path.join(plot_folder,train_env+"_episode_len.svg"))
+    fig.savefig(os.path.join(plot_folder,udr_prefix+train_env+"_episode_len.svg"))
 
-    fig,ax = plt.subplots()
-    ax.plot(df["time/total_timesteps"],df["train/learning_rate"])
-    ax.set_title("learning rate schedule")
-    ax.set_xlabel('timesteps')
-    ax.set_ylabel('learning rate')
-    fig.savefig(os.path.join(plot_folder,train_env+"_lr_schedule.svg"))
+    if "train/learning_rate" in df:
+        fig,ax = plt.subplots()
+        ax.plot(df["time/total_timesteps"],df["train/learning_rate"])
+        ax.set_title("learning rate schedule")
+        ax.set_xlabel('timesteps')
+        ax.set_ylabel('learning rate')
+        fig.savefig(os.path.join(plot_folder,udr_prefix+train_env+"_lr_schedule.svg"))
 
-    fig,ax = plt.subplots()
-    ax.plot(df["time/total_timesteps"],df["train/actor_loss"], label="actor loss")
-    ax.plot(df["time/total_timesteps"],df["train/critic_loss"], label="critic loss")
-    ax.set_title("actor and critic loss")
-    ax.set_xlabel('timesteps')
-    ax.set_ylabel('SAC losses')
-    ax.legend()
-    fig.savefig(os.path.join(plot_folder,train_env+"_sac_losses.svg"))
+    if "train/actor_loss" in df:
+        fig,ax = plt.subplots()
+        ax.plot(df["time/total_timesteps"],df["train/actor_loss"], label="actor loss")
+        ax.plot(df["time/total_timesteps"],df["train/critic_loss"], label="critic loss")
+        ax.set_title("actor and critic loss")
+        ax.set_xlabel('timesteps')
+        ax.set_ylabel('SAC losses')
+        ax.legend()
+        fig.savefig(os.path.join(plot_folder,udr_prefix+train_env+"_sac_losses.svg"))
 
-    #ss_log_path=os.path.join(log_folder,"train_logs" ,'source_train_log.csv')
-    ss_monitor_dir=os.path.join(log_folder,"source_monitor_log")
-    st_log_path=os.path.join(log_folder,"train_logs" ,'st_eval_log.csv' )
-    tt_monitor_dir=os.path.join(log_folder,"target_monitor_log")
-    #tt_log_path=os.path.join(log_folder,"train_logs" ,'target_train_log.csv' )
+    ss_log_path=os.path.join(log_folder,"train_logs" ,udr_prefix+'source_train_log.csv')
+    
+    ss_monitor_dir=os.path.join(log_folder,udr_prefix+"source_monitor_log")
+    st_log_path=os.path.join(log_folder,"train_logs" ,udr_prefix+'st_eval_log.csv' )
+    tt_monitor_dir=os.path.join(log_folder,udr_prefix+"target_monitor_log")
+    
+    tt_log_path=os.path.join(log_folder,"train_logs" ,udr_prefix+'target_train_log.csv' )
 
-    if os.path.exists(os.path.join(ss_monitor_dir,"monitor.csv")) and os.path.exists(st_log_path)\
-         and os.path.exists(os.path.join(tt_monitor_dir,"monitor.csv")):
+    if os.path.exists(ss_log_path) and os.path.exists(st_log_path)\
+         and os.path.exists(tt_log_path):  #ss_monitor_dir  tt_monitor_dir
         
-        #ss_df = pandas.read_csv(ss_log_path)
+        ss_df = pandas.read_csv(ss_log_path)
         st_df = pandas.read_csv(st_log_path)
-        #tt_df = pandas.read_csv(tt_log_path)
+        tt_df = pandas.read_csv(tt_log_path)
 
         ssx, ssy = ts2xy(load_results(ss_monitor_dir), 'timesteps')
         ttx, tty = ts2xy(load_results(tt_monitor_dir), 'timesteps')
+        window=10
 
         fig,ax = plt.subplots()
-        ax.plot(ssx,ssy,label="source-source")  #ss_df["time/total_timesteps"]  ss_df["rollout/ep_rew_mean"]
+        #ax.plot(ssx,ssy,label="source-source")  #ss_df["time/total_timesteps"]  ss_df["rollout/ep_rew_mean"]
+        ax.plot(ss_df["time/total_timesteps"],ss_df["rollout/ep_rew_mean"],label="source-source")
+
         ax.plot(st_df["time/total_timesteps"],st_df["eval/mean_reward"],label="source-target")
-        ax.plot(ttx,tty,label="target-target") #tt_df["time/total_timesteps"] tt_df["rollout/ep_rew_mean"]
+
+        #ax.plot(ttx,tty,label="target-target") #tt_df["time/total_timesteps"] tt_df["rollout/ep_rew_mean"]
+        ax.plot(tt_df["time/total_timesteps"],tt_df["rollout/ep_rew_mean"],label="target-target")
 
         ax.set_xlabel('timesteps')
         ax.set_ylabel('mean episode rewards')
@@ -138,9 +147,25 @@ def plot_results(log_folder,train_env):
         ax.legend()
         fig.savefig(os.path.join(plot_folder,"combined_learning_curve.svg"))
 
+        fig,ax = plt.subplots()
+        ax.plot(ssx,moving_average(ssy,window),label="source-source")  #ss_df["time/total_timesteps"]  ss_df["rollout/ep_rew_mean"]
+        #ax.plot(ss_df["time/total_timesteps"],ss_df["rollout/ep_rew_mean"],label="source-source")
+
+        ax.plot(st_df["time/total_timesteps"],st_df["eval/mean_reward"],label="source-target")
+
+        ax.plot(ttx,moving_average(tty,window),label="target-target") #tt_df["time/total_timesteps"] tt_df["rollout/ep_rew_mean"]
+        #ax.plot(tt_df["time/total_timesteps"],tt_df["rollout/ep_rew_mean"],label="target-target")
+
+        ax.set_xlabel('timesteps')
+        ax.set_ylabel('mean episode rewards')
+        ax.set_title("learning curve")
+        ax.legend()
+        fig.savefig(os.path.join(plot_folder,"combined_monitor_learning_curve.svg"))
+
 #monitoring callbacks
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.evaluation import evaluate_policy
+import numpy as np
 #import gym #solo per i controlli sul tipo
 
 class SaveOnBestTrainingRewardCallback(BaseCallback):
@@ -194,10 +219,10 @@ class EvalOnTargetCallback(BaseCallback):
     Callback for saving a model (the check is done every ``check_freq`` steps)
     based on the training reward (in practice, we recommend using ``EvalCallback``).
 
+    :param eval_env: evaluation environment (the target one)
     :param check_freq:
-    :param log_dir: Path to the folder where the model will be saved.
-      It must contains the file created by the ``Monitor`` wrapper.
-    :param verbose: Verbosity level: 0 for no output, 1 for info messages, 2 for debug messages
+    :param log_file: Path of the log file
+    :param n_eval_eps: number of evaluation episodes
     """
     def __init__(self,eval_env, check_freq: int, log_file: str,n_eval_eps:int): #: Union[gym.Env, VecEnv]
         super(EvalOnTargetCallback, self).__init__()
@@ -227,9 +252,10 @@ class EvalOnTargetCallback(BaseCallback):
 
 from stable_baselines3.common.utils import set_random_seed
 import gym
+from CNN import VisionWrapper
 
 #vectorized environment
-def make_env(env_id: str, rank: int, seed: int = 0):
+def make_env(env_id: str, rank: int, seed: int = 0,use_udr=None,vision=False):
     """
     Utility function for multiprocessed env.
 
@@ -240,7 +266,14 @@ def make_env(env_id: str, rank: int, seed: int = 0):
     """
     def _init():
         env = gym.make(env_id) #, render_mode="human"
-        env.reset()
+        if use_udr=="infinite":
+            env.enable_infinite_udr(2,6)
+        elif use_udr=="finite":
+            env.enable_finite_udr()
+        if vision:
+            env=VisionWrapper(env)
+        else:
+            env.reset()
         return env
     set_random_seed(seed+rank)
     return _init
