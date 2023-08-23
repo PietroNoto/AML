@@ -1,0 +1,7 @@
+lr: 1e-05
+scheduling: constant
+total steps: 500000
+source env: CustomHopper-source-v0
+target env: CustomHopper-target-v0
+use udr: no
+test episodes: 50
