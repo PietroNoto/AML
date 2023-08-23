@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument("--source-env", type=str, help='source environment name', default="CustomHopper-source-v0")
     parser.add_argument("--target-env", type=str, help='target environment name', default="CustomHopper-target-v0")
     parser.add_argument("--checkpoint", type=str, help='path of a checkpoint file', default=None)
-    parser.add_argument("--buffer-size", type=int, help='buffer size', default=10_000)
+    parser.add_argument("--buffer-size", type=int, help='buffer size', default=1_000_000)
     parser.add_argument("--lr-scheduling", type=str, help='learning rate scheduling', default="constant",
                         choices=["constant","linear"]) #aggiungere "cosine"
 
@@ -76,7 +76,8 @@ if __name__ == '__main__':
             "\ntarget env: "+target_env_name+\
             "\nuse udr: "+str(use_udr)+\
             "\nuse vision: "+str(args.use_vision)+\
-            "\ntest episodes: "+str(n_test_eps)
+            "\ntest episodes: "+str(n_test_eps)+\
+            "\nbuffer size: "+str(args.buffer_size)
         param_file.write(param_str)
 
     #file con i risultati dell'esperimento
@@ -86,7 +87,7 @@ if __name__ == '__main__':
 
         print("Source-source:")
         s_model = Model(source_env_name, target_env_name,output_dir,vision=args.use_vision)
-        if args.checkpoint!=None: #non l'ho ancora testato, serve ad allenare a partire da un checkpoint
+        if args.checkpoint!=None:
             s_model.load_model(args.checkpoint)
         s_model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling,buffer_size=args.buffer_size)
         s_model.plot_results()
