@@ -15,22 +15,23 @@ import os
 # mport configure
 from model import Model
 
-
 if __name__ == '__main__':
-
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=str, help='Path where the model is saved', default="prova_vec_env")
     parser.add_argument("--test-eps", type=int, help='Number of test episodes', default=50)
-    parser.add_argument("--lr", type=int, help='starting learning rate', default=7.3e-4)
+    parser.add_argument("--lr", type=float, help='starting learning rate', default=7.3e-4)
     parser.add_argument("--timesteps", type=int, help='number of max timesteps', default=1_000) #circa 23s ogni 1000 timesteps, 38m per 100_000,~ 6h per 1mln
-    parser.add_argument("--use_udr", type=bool, help='use udr flag', default=False)
+    parser.add_argument("--use-udr", type=str,choices=["only","both","no"], help='use udr', default="no")
     parser.add_argument("--n-distr", type=int, help='number of udr distributions', default=3)
     parser.add_argument("--source-env", type=str, help='source environment name', default="CustomHopper-source-v0")
     parser.add_argument("--target-env", type=str, help='target environment name', default="CustomHopper-target-v0")
     parser.add_argument("--checkpoint", type=str, help='path of a checkpoint file', default=None)
+    parser.add_argument("--buffer-size", type=int, help='buffer size', default=10_000)
     parser.add_argument("--lr-scheduling", type=str, help='learning rate scheduling', default="constant",
                         choices=["constant","linear"]) #aggiungere "cosine"
+
+    parser.add_argument("--use-vision", type=bool, help='change observation space to pixels', default=False)
 
     args=parser.parse_args()
     
@@ -74,55 +75,93 @@ if __name__ == '__main__':
             "\nsource env: "+source_env_name+\
             "\ntarget env: "+target_env_name+\
             "\nuse udr: "+str(use_udr)+\
+            "\nuse vision: "+str(args.use_vision)+\
             "\ntest episodes: "+str(n_test_eps)
         param_file.write(param_str)
 
     #file con i risultati dell'esperimento
     test_fp=open(os.path.join(output_dir,'test_results.txt'), 'w')
 
-    print("Source-source:")
-    s_model = Model(source_env_name, target_env_name,output_dir)
-    if args.checkpoint!=None: #non l'ho ancora testato, serve ad allenare a partire da un checkpoint
-        s_model.load_model()
-    s_model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling)
-    s_model.plot_results()
-    ss_mean_rew,ss_std_rew=s_model.test(test_env_name=source_env_name,n_eval=n_test_eps)
-    test_fp.write("Source-source: "+f"mean_reward={ss_mean_rew:.2f} +/- {ss_std_rew:.2f}")
-     
-    print("Source-target") #testa modello già allenato
-    st_mean_rew,st_std_rew=s_model.test(target_env_name,n_test_eps)
-    test_fp.write("\nSource-target: "+f"mean_reward={st_mean_rew:.2f} +/- {st_std_rew:.2f}")
+    if args.use_udr !="only":
 
-    print("Target-target:")
-    tt_model = Model(target_env_name, target_env_name, output_dir)
-    tt_model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling)
-    tt_model.plot_results()
-    tt_mean_rew,tt_std_rew=tt_model.test(test_env_name=target_env_name,n_eval=n_test_eps)
-    test_fp.write("\ntarget-target: "+f"mean_reward={tt_mean_rew:.2f} +/- {tt_std_rew:.2f}")
+        print("Source-source:")
+        s_model = Model(source_env_name, target_env_name,output_dir,vision=args.use_vision)
+        if args.checkpoint!=None: #non l'ho ancora testato, serve ad allenare a partire da un checkpoint
+            s_model.load_model(args.checkpoint)
+        s_model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling,buffer_size=args.buffer_size)
+        s_model.plot_results()
+        ss_mean_rew,ss_std_rew=s_model.test(test_env_name=source_env_name,n_eval=n_test_eps)
+        test_fp.write("Source-source: "+f"mean_reward={ss_mean_rew:.2f} +/- {ss_std_rew:.2f}")
+        
+        print("Source-target") #testa modello già allenato
+        st_mean_rew,st_std_rew=s_model.test(target_env_name,n_test_eps)
+        test_fp.write("\nSource-target: "+f"mean_reward={st_mean_rew:.2f} +/- {st_std_rew:.2f}")
+        
+        print("Target-target:")
+        tt_model = Model(target_env_name, target_env_name, output_dir,vision=args.use_vision)
+        if args.checkpoint!=None: #non l'ho ancora testato, serve ad allenare a partire da un checkpoint
+            tt_model.load_model(args.checkpoint.replace("source","target"))
+        tt_model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling,buffer_size=args.buffer_size)
+        tt_model.plot_results()
+        tt_mean_rew,tt_std_rew=tt_model.test(test_env_name=target_env_name,n_eval=n_test_eps)
+        test_fp.write("\ntarget-target: "+f"mean_reward={tt_mean_rew:.2f} +/- {tt_std_rew:.2f}")
     
+    if args.use_udr != "no":
+    
+        #Source-source using UDR
+        print("Source-source with UDR:")
+        s_udr = Model(source_env_name, target_env_name,output_dir,use_udr="infinite")
+        
+        if args.checkpoint!=None: #non l'ho ancora testato, serve ad allenare a partire da un checkpoint
+            s_udr.load_model(args.checkpoint)
+
+        s_udr.train(timesteps=n_timesteps,
+                    learning_rate = lr,
+                    lr_schedule=args.lr_scheduling,
+                    buffer_size=args.buffer_size,
+                    use_udr=True)
+        
+        s_udr.plot_results()
+        ss_mean_rew,ss_std_rew=s_udr.test(test_env_name=source_env_name,n_eval=n_test_eps)
+        test_fp.write("Source-source: "+f"mean_reward={ss_mean_rew:.2f} +/- {ss_std_rew:.2f}")
+
+        #Source-target using UDR
+        print("Source-target with UDR:")
+        st_mean_rew,st_std_rew=s_udr.test(test_env_name=target_env_name,n_eval=n_test_eps)
+        test_fp.write("\nSource-target: "+f"mean_reward={st_mean_rew:.2f} +/- {st_std_rew:.2f}")
+
+        print("Target-target with UDR:")
+        t_udr = Model(target_env_name, target_env_name,output_dir,use_udr="infinite")
+
+        if args.checkpoint!=None: #non l'ho ancora testato, serve ad allenare a partire da un checkpoint
+            t_udr.load_model(args.checkpoint.replace("source","target"))
+
+        t_udr.train(timesteps=n_timesteps,
+                    learning_rate = lr,
+                    lr_schedule=args.lr_scheduling,
+                    buffer_size=args.buffer_size,
+                    use_udr=True)
+        t_udr.plot_results()
+        tt_mean_rew,tt_std_rew=t_udr.test(test_env_name=target_env_name,n_eval=n_test_eps)
+        test_fp.write("\nTarget-target: "+f"mean_reward={tt_mean_rew:.2f} +/- {tt_std_rew:.2f}")
+
     test_fp.close()
+
+    #Source-source vision without udr
     """
-    #Source-source using UDR
-    print("Source-source with UDR:")
-    t_log_dir = "log_ss_" + str(lr) + "_" + str(n_timesteps)
-    ss_udr = Model("CustomHopper-source-v0", "CustomHopper-source-v0", t_log_dir)
-    ss_udr.train_udr(None, n_timesteps, n_distr, learning_rate = lr)
-    ss_udr.test(n_test_eps)
-
-    #Source-target using UDR
-    print("Source-target with UDR:")
-    t_log_dir = "log_st_" + str(lr) + "_" + str(n_timesteps)
-    st_udr = Model("CustomHopper-source-v0", "CustomHopper-target-v0")
-    st_udr.train_udr(n_timesteps, n_distr, learning_rate = lr)
-    st_udr.train_udr("SAC_s_0.003_50_UDR", n_timesteps, n_distr, learning_rate = lr)
-    st_udr.test(n_test_eps)
-
+    vis_s_model = Model(source_env_name, target_env_name,output_dir,use_udr="", vision=True)
+    vis_s_model.train(timesteps=n_timesteps, learning_rate = lr,
+                    lr_schedule=args.lr_scheduling,buffer_size=args.buffer_size)
+    vis_s_model.plot_results()
+    vss_mean_rew,vss_std_rew=vis_s_model.test(test_env_name=source_env_name,n_eval=n_test_eps)
+    test_fp.write("Source-source: "+f"mean_reward={ss_mean_rew:.2f} +/- {ss_std_rew:.2f}")
+    """
     #Source-source using CNN
-    env = VisionWrapper(gym.make("CustomHopper-source-v0"))
+    #env = VisionWrapper(gym.make("CustomHopper-source-v0"))
     #vis_ss_model = SAC(CnnPolicy, env, verbose = 1, buffer_size=10000)
     #vis_ss_model.learn(n_timesteps, log_interval=20, progress_bar=True)
     #vis_ss_model.save("SAC_CNN_source_env")
     #mean_reward, std_reward = evaluate_policy(vis_ss_model, env, n_eval_episodes = n_test_eps, deterministic = True)
     #print(f"mean_reward={mean_reward:.2f} +/- {std_reward:.2f}") 
-    """
+    
     
