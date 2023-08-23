@@ -10,7 +10,7 @@ if __name__ == '__main__':
     #os.system("Xvfb :1 -screen 0 1024x768x24 &")
     #os.environ['DISPLAY'] = ':1'
 
-    checkpoint="prova_vec_env_8/checkpoints/source_2000000_steps.zip"
+    checkpoint="trained_2M/source_2000000_steps.zip"
     source_env_name="CustomHopper-source-v0"
     target_env_name="CustomHopper-target-v0"
     n_test_eps=50
