@@ -5,12 +5,24 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "Python: Current File (no args)",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false
+        },
+        {
+            "name": "Python: Current File (custom args)",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "vision/hopper_config_extra.py",
+                "work_dirs/hopper_config_extra/20230821_213412/epoch_10.pth"
+            ]
         },
         {
             "name": "train",
@@ -19,12 +31,20 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--output-dir", "prova_vec_env_udr_4",
-                    "--timesteps","400_000",
-                    "--lr-scheduling","constant",
-                    "--lr","0.0003",
-                    "--use-udr","only",
-                    "--checkpoint","prova_vec_env_udr_3/checkpoints/source_600000_steps.zip"]
+            "args": [
+                "--output-dir",
+                "prova_vec_env_udr_4",
+                "--timesteps",
+                "400_000",
+                "--lr-scheduling",
+                "constant",
+                "--lr",
+                "0.0003",
+                "--use-udr",
+                "only",
+                "--checkpoint",
+                "prova_vec_env_udr_3/checkpoints/source_600000_steps.zip"
+            ]
         },
         {
             "name": "train_vision",
@@ -33,13 +53,44 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--output-dir", "prova_vec_env_vision",
-                    "--timesteps","1_000_000",
-                    "--lr-scheduling","constant",
-                    "--lr","0.0003",
-                    "--use-udr","no",
-                    "--use-vision", "True",
-                    ]
-        }
+            "args": [
+                "--output-dir",
+                "prova_vec_env_vision",
+                "--timesteps",
+                "1_000_000",
+                "--lr-scheduling",
+                "constant",
+                "--lr",
+                "0.0003",
+                "--use-udr",
+                "no",
+                "--use-vision",
+                "True",
+            ]
+        },
+        {
+            "name": "train_vision_stacked_frames",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--output-dir",
+                "prova_vec_env_vision_stack",
+                "--timesteps",
+                "1_000_000",
+                "--lr-scheduling",
+                "constant",
+                "--lr",
+                "0.0003",
+                "--use-udr",
+                "no",
+                "--use-vision",
+                "True",
+                "--use-stack",
+                "True"
+            ]
+        },
     ]
 }

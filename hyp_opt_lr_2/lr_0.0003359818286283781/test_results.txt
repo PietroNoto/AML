@@ -1,0 +1,3 @@
+Source-source: mean_reward=176.07 +/- 1.22
+Source-target: mean_reward=176.83 +/- 1.33
+target-target: mean_reward=190.53 +/- 1.25
