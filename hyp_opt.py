@@ -26,38 +26,38 @@ if __name__=='__main__':
     2 buffer size [1, 100, 1000, 10_000, 100_000, 1_000_000]
     3 random grid
     """
-    n_train_steps=500_000
-    n_lr=10
-    n_proc_parall=3
+    n_train_steps = 100_000
+    n_lr = 10
+    n_proc_parall = 3
     process_handles=[]
 
-    hyp_opt_dir="hyp_opt_lr_3"
+    hyp_opt_dir = "hyp_opt_lr_3"
     os.makedirs(hyp_opt_dir,exist_ok=True)
     
-    for i,lr in enumerate(np.logspace(-5,-1,n_lr)):
+    for i,lr in enumerate(np.logspace(-5, -1, n_lr)):
         print("testing lr: ",lr)
         
-        cmd_str="python main.py --output-dir "+os.path.join(hyp_opt_dir,"lr_"+str(lr))+\
-            " --lr "+str(lr)+\
-            " --timesteps "+str(n_train_steps)
+        cmd_str = "python3 main.py --output-dir " + os.path.join(hyp_opt_dir,"lr_"+str(lr))+\
+            " --lr "+str(lr) +\
+            " --timesteps " + str(n_train_steps)
         print(i,") ",cmd_str)
 
-        #os.system(cmd_str)
+        os.system(cmd_str)
 
         process_handles.append(Popen([cmd_str], shell=True,
                 stdin=None, stdout=None, stderr=None))
         
-        if (i+1)%n_proc_parall==0:    
+        if (i+1) % n_proc_parall == 0:    
             for handle in process_handles:
                 handle.wait()
             process_handles.clear()
     for handle in process_handles:
                 handle.wait()
     
-    train_env="source"
+    train_env = "source"
     fig,ax = plt.subplots()
     for curr_dir in os.listdir(hyp_opt_dir):
-        log_path=os.path.join(hyp_opt_dir,curr_dir,"train_logs" ,train_env+'_train_log.csv' )
+        log_path = os.path.join(hyp_opt_dir,curr_dir,"train_logs" ,train_env+'_train_log.csv' )
         if os.path.exists(log_path):
             df = pandas.read_csv(log_path)
             ax.plot(df["time/total_timesteps"],df["rollout/ep_rew_mean"],label="lr: "+'{:.2e}'.format(float(curr_dir[3:])))

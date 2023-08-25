@@ -28,6 +28,7 @@ from stable_baselines3.common import results_plotter
 import pandas
 import matplotlib.pyplot as plt
 import os
+import numpy as np
 
 
 def moving_average(values, window):
@@ -165,7 +166,6 @@ def plot_results(log_folder,train_env,udr_prefix):
 #monitoring callbacks
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.evaluation import evaluate_policy
-import numpy as np
 #import gym #solo per i controlli sul tipo
 
 class SaveOnBestTrainingRewardCallback(BaseCallback):
@@ -255,7 +255,7 @@ import gym
 from CNN import VisionWrapper
 
 #vectorized environment
-def make_env(env_id: str, rank: int, seed: int = 0,use_udr=None,vision=False):
+def make_env(env_id: str, rank: int, seed: int = 0,use_udr = None, udr_lb = 1, udr_ub = 5, n_distr = 3, vision = False):
     """
     Utility function for multiprocessed env.
 
@@ -266,12 +266,12 @@ def make_env(env_id: str, rank: int, seed: int = 0,use_udr=None,vision=False):
     """
     def _init():
         env = gym.make(env_id) #, render_mode="human"
-        if use_udr=="infinite":
-            env.enable_infinite_udr(2,6)
-        elif use_udr=="finite":
-            env.enable_finite_udr()
+        if use_udr == "infinite":
+            env.enable_infinite_udr(udr_lb, udr_ub)
+        elif use_udr == "finite":
+            env.enable_finite_udr(udr_lb, udr_ub, n_distr)
         if vision:
-            env=VisionWrapper(env)
+            env = VisionWrapper(env)
         else:
             env.reset()
         return env
