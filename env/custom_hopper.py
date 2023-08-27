@@ -35,9 +35,9 @@ class CustomHopper(MujocoEnv, utils.EzPickle):
             self.sim.model.body_mass[1] -= 1.0
 
 
-    def enable_finite_udr(self, n_distr = 3):
+    def enable_finite_udr(self, lower_bound = 1, upper_bound = 5, n_distr = 3):
         self.useDomainRand = Udr.Finite
-        self.random_masses = {k : np.random.uniform(1, 5, n_distr) for k in range(3)}
+        self.random_masses = {k : np.random.uniform(lower_bound, upper_bound, n_distr) for k in range(3)}
         #print(self.random_masses)
 
     def enable_infinite_udr(self, lower_bound, upper_bound):

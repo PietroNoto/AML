@@ -20,17 +20,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=str, help='Path where the model is saved', default="prova_vec_env")
     parser.add_argument("--test-eps", type=int, help='Number of test episodes', default=50)
-    parser.add_argument("--lr", type=float, help='starting learning rate', default=7.3e-4)
-    parser.add_argument("--timesteps", type=int, help='number of max timesteps', default=1_000) #circa 23s ogni 1000 timesteps, 38m per 100_000,~ 6h per 1mln
-    parser.add_argument("--use-udr", type=str,choices=["only","both","no"], help='use udr', default="no")
-    parser.add_argument("--n-distr", type=int, help='number of udr distributions', default=3)
+    parser.add_argument("--lr", type=float, help='starting learning rate', default=1e-3)
+    parser.add_argument("--timesteps", type=int, help='number of max timesteps', default=100_000) #circa 23s ogni 1000 timesteps, 38m per 100_000,~ 6h per 1mln
+    parser.add_argument("--use-udr", type=str,choices=["only","both","no"], help='use udr', default="only")
+    parser.add_argument("--udr-type", type = str, choices = ["finite", "infinite"], help = "Type of UDR technique", default = "finite")
+    parser.add_argument("--udr-lower-bound", type = int, help = "udr lower bound", default = 1)
+    parser.add_argument("--udr-upper-bound", type = int, help = "udr upper bound", default = 4)
+    parser.add_argument("--n-distr", type=int, help='number of udr distributions', default = 3)
     parser.add_argument("--source-env", type=str, help='source environment name', default="CustomHopper-source-v0")
     parser.add_argument("--target-env", type=str, help='target environment name', default="CustomHopper-target-v0")
     parser.add_argument("--checkpoint", type=str, help='path of a checkpoint file', default=None)
     parser.add_argument("--buffer-size", type=int, help='buffer size', default=1_000_000)
     parser.add_argument("--lr-scheduling", type=str, help='learning rate scheduling', default="constant",
                         choices=["constant","linear"]) #aggiungere "cosine"
-
     parser.add_argument("--use-vision", type=bool, help='change observation space to pixels', default=False)
 
     args=parser.parse_args()
@@ -38,10 +40,13 @@ if __name__ == '__main__':
     n_test_eps = args.test_eps #50
     n_timesteps = args.timesteps #50_000
     lr = args.lr #7.3e-4
-    n_distr = args.n_distr #3
     source_env_name="CustomHopper-source-v0"
     target_env_name="CustomHopper-target-v0"
     use_udr=args.use_udr #False
+    udr_type = args.udr_type
+    udr_lb = args.udr_lower_bound
+    udr_ub = args.udr_upper_bound
+    n_distr = args.n_distr #3
 
     #args:  train->plots: output-dir/  n_timesteps  lr  batch_size  checkpoint_file  policy [MLP, CNN]? <- argomenti
     #                       checkpoints/
@@ -81,9 +86,9 @@ if __name__ == '__main__':
         param_file.write(param_str)
 
     #file con i risultati dell'esperimento
-    test_fp=open(os.path.join(output_dir,'test_results.txt'), 'w')
+    test_fp = open(os.path.join(output_dir,'test_results.txt'), 'w')
 
-    if args.use_udr !="only":
+    if args.use_udr != "only":
 
         print("Source-source:")
         s_model = Model(source_env_name, target_env_name,output_dir,vision=args.use_vision)
@@ -111,7 +116,7 @@ if __name__ == '__main__':
     
         #Source-source using UDR
         print("Source-source with UDR:")
-        s_udr = Model(source_env_name, target_env_name,output_dir,use_udr="infinite")
+        s_udr = Model(source_env_name, target_env_name,output_dir,use_udr = udr_type, udr_lb = udr_lb, udr_ub = udr_ub)
         
         if args.checkpoint!=None: #non l'ho ancora testato, serve ad allenare a partire da un checkpoint
             s_udr.load_model(args.checkpoint)
@@ -131,6 +136,7 @@ if __name__ == '__main__':
         st_mean_rew,st_std_rew=s_udr.test(test_env_name=target_env_name,n_eval=n_test_eps)
         test_fp.write("\nSource-target: "+f"mean_reward={st_mean_rew:.2f} +/- {st_std_rew:.2f}")
 
+        """
         print("Target-target with UDR:")
         t_udr = Model(target_env_name, target_env_name,output_dir,use_udr="infinite")
 
@@ -141,10 +147,11 @@ if __name__ == '__main__':
                     learning_rate = lr,
                     lr_schedule=args.lr_scheduling,
                     buffer_size=args.buffer_size,
-                    use_udr=True)
+                    use_udr=False)
         t_udr.plot_results()
         tt_mean_rew,tt_std_rew=t_udr.test(test_env_name=target_env_name,n_eval=n_test_eps)
         test_fp.write("\nTarget-target: "+f"mean_reward={tt_mean_rew:.2f} +/- {tt_std_rew:.2f}")
+        """
 
     test_fp.close()
 
