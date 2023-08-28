@@ -16,10 +16,21 @@ from util import linear_schedule, plot_results, EvalOnTargetCallback, make_env
 from stable_baselines3.common.vec_env import DummyVecEnv,SubprocVecEnv,VecFrameStack
 from stable_baselines3.common.env_util import make_vec_env
 from CNN import VisionWrapper
+from estimator import PoseWrapper
 
 class Model:
 
-    def __init__(self, train_env_name: str, test_env_name: str, output_dir:str, use_udr = "", udr_lb = 1, udr_ub = 5, udr_ndistr = 3, vision=False):
+    def __init__(self, train_env_name: str,
+                 test_env_name: str,
+                 output_dir:str,
+                 use_udr = "",
+                 udr_lb = 1,
+                 udr_ub = 5,
+                 udr_ndistr = 3,
+                 vision=False,
+                 pose_est=False,
+                 pose_config="",
+                 pose_checkpoint=""):
         
         self.output_dir = output_dir
         self.log_dir=os.path.join(self.output_dir,"train_logs")
@@ -35,6 +46,7 @@ class Model:
         self.use_udr = use_udr
 
         self.use_vec_env = True
+        self.use_pose_est = pose_est
 
         num_cpu = os.cpu_count() # //4
         """
@@ -45,14 +57,21 @@ class Model:
         """
         if self.use_vec_env and vision:
             print("using ",num_cpu," CPUs")
-
-            self.train_env=VecMonitor(
-                VecFrameStack(
-                    SubprocVecEnv(
-                    [make_env(self.train_env_name, i,use_udr=use_udr,vision=vision ) for i in range(num_cpu)],
-                    start_method="fork",),
-                n_stack=2),
-            os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv"))
+            if (pose_est):
+                self.train_env=make_vec_env(train_env_name,
+                    vec_env_cls=DummyVecEnv,
+                    n_envs=num_cpu,
+                    monitor_dir=os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log"),
+                    wrapper_class=lambda env: PoseWrapper(env, pose_config, pose_checkpoint)
+                )
+            else:
+                self.train_env=VecMonitor(
+                    VecFrameStack(
+                        SubprocVecEnv(
+                        [make_env(self.train_env_name, i,use_udr=use_udr,vision=vision ) for i in range(num_cpu)],
+                        start_method="fork",),
+                    n_stack=2),
+                os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv"))
         elif self.use_vec_env: # (and not vision)
             print("using ",num_cpu," CPUs")
             self.train_env = VecMonitor(
@@ -78,6 +97,12 @@ class Model:
         
         if vision:
             self.test_env =VecMonitor(VecFrameStack(DummyVecEnv([lambda: VisionWrapper(gym.make(test_env_name))]),n_stack=2))
+            if pose_est:
+                self.test_env=make_vec_env(test_env_name,
+                                           vec_env_cls=DummyVecEnv,
+                                           n_envs=num_cpu,
+                                           wrapper_class=lambda env: PoseWrapper(env, pose_config, pose_checkpoint)
+        )
         else:
             self.test_env = Monitor(gym.make(test_env_name))
         
@@ -136,19 +161,27 @@ class Model:
                                 target_entropy= -3.0,
                                 **hyperparams) #,tensorboard_log=self.output_dir
             else:
-                self.model = SAC(CnnPolicy, self.train_env, verbose = 1,
-                            learning_rate=lr_schedule,
-                            learning_starts=10000,
-                            buffer_size=buffer_size,
-                            target_entropy= -3.0,
-                            **hyperparams)
+                if self.use_pose_est:
+                    self.model = SAC(MlpPolicy, self.train_env, verbose = 1,
+                                learning_rate=lr_schedule,
+                                learning_starts=100,
+                                buffer_size=buffer_size,
+                                target_entropy= -3.0,
+                                **hyperparams)
+                else:
+                    self.model = SAC(CnnPolicy, self.train_env, verbose = 1,
+                                learning_rate=lr_schedule,
+                                learning_starts=10000,
+                                buffer_size=buffer_size,
+                                target_entropy= -3.0,
+                                **hyperparams)
         
         custom_logger = configure(self.log_dir, ["csv"])
         self.model.set_logger(custom_logger)
 
-        self.train_env.reset()
+        #self.train_env.reset()
 
-        self.model.learn(total_timesteps = timesteps, log_interval = 10,callback=callbacks, reset_num_timesteps=False) #,progress_bar=True #mi sminchia l'output
+        self.model.learn(total_timesteps = timesteps, log_interval = 10,callback=callbacks, reset_num_timesteps=False,progress_bar=True)
         #rinomina i file di log, usa flag source target del model
         custom_logger.close()
         os.rename(os.path.join(self.log_dir,"progress.csv"),os.path.join(self.log_dir,self.udr_prefix+self.src_flag+"_train_log.csv"))

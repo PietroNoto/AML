@@ -92,5 +92,33 @@
                 "True"
             ]
         },
+        {
+            "name": "train_vision_pose_estimation",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--output-dir",
+                "prova_vec_env_vision_pose_est",
+                "--timesteps",
+                "10_000",
+                "--lr-scheduling",
+                "constant",
+                "--lr",
+                "0.0003",
+                "--use-udr",
+                "no",
+                "--use-vision",
+                "True",
+                "--use-pose-est",
+                "True",
+                "--mmpose-config",
+                "vision/hopper_config_extra.py",
+                "--mmpose-checkpoint",
+                "/mnt/d/Download/epoch_100.pth"
+            ]
+        },
     ]
 }

@@ -34,6 +34,9 @@ if __name__ == '__main__':
     parser.add_argument("--lr-scheduling", type=str, help='learning rate scheduling', default="constant",
                         choices=["constant","linear"]) #aggiungere "cosine"
     parser.add_argument("--use-vision", type=bool, help='change observation space to pixels', default=False)
+    parser.add_argument("--use-pose-est", type=bool, help="use a custom pose estimation network", default=False)
+    parser.add_argument("--mmpose-config", type=str, help="path of mmpose config", default="")
+    parser.add_argument("--mmpose-checkpoint", type=str, help="path of mmpose checkpoint", default="")
 
     args=parser.parse_args()
     
@@ -47,6 +50,9 @@ if __name__ == '__main__':
     udr_lb = args.udr_lower_bound
     udr_ub = args.udr_upper_bound
     n_distr = args.n_distr #3
+    pose_est = args.use_pose_est
+    pose_config = args.mmpose_config
+    pose_checkpoint = args.mmpose_checkpoint
 
     #args:  train->plots: output-dir/  n_timesteps  lr  batch_size  checkpoint_file  policy [MLP, CNN]? <- argomenti
     #                       checkpoints/
@@ -82,7 +88,11 @@ if __name__ == '__main__':
             "\nuse udr: "+str(use_udr)+\
             "\nuse vision: "+str(args.use_vision)+\
             "\ntest episodes: "+str(n_test_eps)+\
-            "\nbuffer size: "+str(args.buffer_size)
+            "\nbuffer size: "+str(args.buffer_size)+\
+            "\npose estimation: "+str(args.use_pose_est)+\
+            "\npose config file: "+str(args.mmpose_config)+\
+            "\npose checkpoint: "+str(args.mmpose_checkpoint)
+            
         param_file.write(param_str)
 
     #file con i risultati dell'esperimento
@@ -91,7 +101,7 @@ if __name__ == '__main__':
     if args.use_udr != "only":
 
         print("Source-source:")
-        s_model = Model(source_env_name, target_env_name,output_dir,vision=args.use_vision)
+        s_model = Model(source_env_name, target_env_name,output_dir,vision=args.use_vision,pose_est=pose_est,pose_config=pose_config,pose_checkpoint=pose_checkpoint)
         if args.checkpoint!=None:
             s_model.load_model(args.checkpoint)
         s_model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling,buffer_size=args.buffer_size)
