@@ -18,11 +18,11 @@ from model import Model
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output-dir", type=str, help='Path where the model is saved', default="prova_vec_env")
+    parser.add_argument("--output-dir", type=str, help='Path where the model is saved', default = "output")
     parser.add_argument("--test-eps", type=int, help='Number of test episodes', default=50)
     parser.add_argument("--lr", type=float, help='starting learning rate', default=1e-3)
-    parser.add_argument("--timesteps", type=int, help='number of max timesteps', default=100_000) #circa 23s ogni 1000 timesteps, 38m per 100_000,~ 6h per 1mln
-    parser.add_argument("--use-udr", type=str,choices=["only","both","no"], help='use udr', default="only")
+    parser.add_argument("--timesteps", type=int, help='number of max timesteps', default=100_000)
+    parser.add_argument("--use-udr", type=str,choices=["only","both","no"], help='use udr', default="no")
     parser.add_argument("--udr-type", type = str, choices = ["finite", "infinite"], help = "Type of UDR technique", default = "finite")
     parser.add_argument("--udr-lower-bound", type = int, help = "udr lower bound", default = 1)
     parser.add_argument("--udr-upper-bound", type = int, help = "udr upper bound", default = 4)
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     parser.add_argument("--buffer-size", type=int, help='buffer size', default=1_000_000)
     parser.add_argument("--lr-scheduling", type=str, help='learning rate scheduling', default="constant",
                         choices=["constant","linear"]) #aggiungere "cosine"
-    parser.add_argument("--use-vision", type=bool, help='change observation space to pixels', default=False)
+    parser.add_argument("--use-vision", type=bool, help='change observation space to pixels', default=True)
     parser.add_argument("--use-pose-est", type=bool, help="use a custom pose estimation network", default=False)
     parser.add_argument("--mmpose-config", type=str, help="path of mmpose config", default="")
     parser.add_argument("--mmpose-checkpoint", type=str, help="path of mmpose checkpoint", default="")
@@ -98,10 +98,11 @@ if __name__ == '__main__':
     #file con i risultati dell'esperimento
     test_fp = open(os.path.join(output_dir,'test_results.txt'), 'w')
 
+    #NO UDR
     if args.use_udr != "only":
 
         print("Source-source:")
-        s_model = Model(source_env_name, target_env_name,output_dir,vision=args.use_vision,pose_est=pose_est,pose_config=pose_config,pose_checkpoint=pose_checkpoint)
+        s_model = Model(source_env_name, target_env_name, output_dir, vision=args.use_vision, pose_est=pose_est, pose_config=pose_config, pose_checkpoint=pose_checkpoint)
         if args.checkpoint!=None:
             s_model.load_model(args.checkpoint)
         s_model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling,buffer_size=args.buffer_size)
@@ -122,11 +123,12 @@ if __name__ == '__main__':
         tt_mean_rew,tt_std_rew=tt_model.test(test_env_name=target_env_name,n_eval=n_test_eps)
         test_fp.write("\ntarget-target: "+f"mean_reward={tt_mean_rew:.2f} +/- {tt_std_rew:.2f}")
     
+    #UDR
     if args.use_udr != "no":
     
         #Source-source using UDR
         print("Source-source with UDR:")
-        s_udr = Model(source_env_name, target_env_name,output_dir,use_udr = udr_type, udr_lb = udr_lb, udr_ub = udr_ub)
+        s_udr = Model(source_env_name, target_env_name, output_dir, use_udr = udr_type, udr_lb = udr_lb, udr_ub = udr_ub, udr_ndistr = n_distr)
         
         if args.checkpoint!=None: #non l'ho ancora testato, serve ad allenare a partire da un checkpoint
             s_udr.load_model(args.checkpoint)

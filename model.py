@@ -42,13 +42,12 @@ class Model:
         self.test_env_name = test_env_name
         self.src_flag = "source" if self.train_env_name == "CustomHopper-source-v0" else "target"
         self.udr_prefix = "udr_" if use_udr != "" else ""
-        self.vision=vision
+        self.vision = vision
         self.use_udr = use_udr
-
         self.use_vec_env = True
         self.use_pose_est = pose_est
 
-        num_cpu = os.cpu_count() # //4
+        num_cpu = os.cpu_count() 
         """
         self.train_env =VecMonitor(SubprocVecEnv(
             [make_env(self.train_env_name, i,use_udr=use_udr,vision=vision ) for i in range(num_cpu)],
@@ -68,7 +67,7 @@ class Model:
                 self.train_env=VecMonitor(
                     VecFrameStack(
                         SubprocVecEnv(
-                        [make_env(self.train_env_name, i,use_udr=use_udr,vision=vision ) for i in range(num_cpu)],
+                        [make_env(self.train_env_name, i,use_udr = use_udr, udr_lb = udr_lb, udr_ub = udr_ub, n_distr = udr_ndistr, vision=vision) for i in range(num_cpu)],
                         start_method="fork",),
                     n_stack=2),
                 os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv"))
@@ -76,7 +75,7 @@ class Model:
             print("using ",num_cpu," CPUs")
             self.train_env = VecMonitor(
                 SubprocVecEnv(
-                [make_env(self.train_env_name, i,use_udr=use_udr,vision=vision ) for i in range(num_cpu)],
+                [make_env(self.train_env_name, i,use_udr = use_udr, udr_lb = udr_lb, udr_ub = udr_ub, n_distr = udr_ndistr, vision=vision) for i in range(num_cpu)],
                 start_method="fork",
             ),os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv"))
 
@@ -171,8 +170,8 @@ class Model:
                 else:
                     self.model = SAC(CnnPolicy, self.train_env, verbose = 1,
                                 learning_rate=lr_schedule,
-                                learning_starts=10000,
-                                buffer_size=buffer_size,
+                                learning_starts=100,
+                                buffer_size=10_000,
                                 target_entropy= -3.0,
                                 **hyperparams)
         
