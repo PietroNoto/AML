@@ -23,9 +23,9 @@ if __name__ == '__main__':
     parser.add_argument("--lr", type=float, help='starting learning rate', default=1e-3)
     parser.add_argument("--timesteps", type=int, help='number of max timesteps', default=100_000)
     parser.add_argument("--use-udr", type=str,choices=["only","both","no"], help='use udr', default="no")
-    parser.add_argument("--udr-type", type = str, choices = ["finite", "infinite"], help = "Type of UDR technique", default = "finite")
+    parser.add_argument("--udr-type", type = str, choices = ["finite", "infinite"], help = "Type of UDR technique", default = "infinite")
     parser.add_argument("--udr-lower-bound", type = int, help = "udr lower bound", default = 1)
-    parser.add_argument("--udr-upper-bound", type = int, help = "udr upper bound", default = 4)
+    parser.add_argument("--udr-upper-bound", type = int, help = "udr upper bound", default = 3)
     parser.add_argument("--n-distr", type=int, help='number of udr distributions', default = 3)
     parser.add_argument("--source-env", type=str, help='source environment name', default="CustomHopper-source-v0")
     parser.add_argument("--target-env", type=str, help='target environment name', default="CustomHopper-target-v0")
@@ -33,8 +33,8 @@ if __name__ == '__main__':
     parser.add_argument("--buffer-size", type=int, help='buffer size', default=1_000_000)
     parser.add_argument("--lr-scheduling", type=str, help='learning rate scheduling', default="constant",
                         choices=["constant","linear"]) #aggiungere "cosine"
-    parser.add_argument("--use-vision", type=bool, help='change observation space to pixels', default=True)
-    parser.add_argument("--use-pose-est", type=bool, help="use a custom pose estimation network", default=False)
+    parser.add_argument("--use-vision", type=bool, help='change observation space to pixels', default=False)
+    parser.add_argument("--use-pose-est", type=bool, help="use a custom pose estimation network", default=True)
     parser.add_argument("--mmpose-config", type=str, help="path of mmpose config", default="")
     parser.add_argument("--mmpose-checkpoint", type=str, help="path of mmpose checkpoint", default="")
 
@@ -102,7 +102,8 @@ if __name__ == '__main__':
     if args.use_udr != "only":
 
         print("Source-source:")
-        s_model = Model(source_env_name, target_env_name, output_dir, vision=args.use_vision, pose_est=pose_est, pose_config=pose_config, pose_checkpoint=pose_checkpoint)
+        s_model = Model(source_env_name, target_env_name, output_dir, vision=args.use_vision, pose_est=pose_est, 
+                        pose_config=pose_config, pose_checkpoint=pose_checkpoint)
         if args.checkpoint!=None:
             s_model.load_model(args.checkpoint)
         s_model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling,buffer_size=args.buffer_size)
@@ -115,7 +116,8 @@ if __name__ == '__main__':
         test_fp.write("\nSource-target: "+f"mean_reward={st_mean_rew:.2f} +/- {st_std_rew:.2f}")
         
         print("Target-target:")
-        tt_model = Model(target_env_name, target_env_name, output_dir,vision=args.use_vision)
+        tt_model = Model(source_env_name, target_env_name, output_dir, vision=args.use_vision, pose_est=pose_est, 
+                         pose_config=pose_config, pose_checkpoint=pose_checkpoint)
         if args.checkpoint!=None: #non l'ho ancora testato, serve ad allenare a partire da un checkpoint
             tt_model.load_model(args.checkpoint.replace("source","target"))
         tt_model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling,buffer_size=args.buffer_size)

@@ -54,20 +54,35 @@ class Model:
             start_method="fork",
         ),os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv"))
         """
+        #Aggiungere supporto UDR
         if self.use_vec_env and vision:
             print("using ",num_cpu," CPUs")
             if (pose_est):
+                """
                 self.train_env=make_vec_env(train_env_name,
                     vec_env_cls=DummyVecEnv,
                     n_envs=num_cpu,
                     monitor_dir=os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log"),
                     wrapper_class=lambda env: PoseWrapper(env, pose_config, pose_checkpoint)
                 )
+                """
+                
+                self.train_env=VecMonitor(
+                    VecFrameStack(
+                        SubprocVecEnv(
+                        [make_env(self.train_env_name, i,use_udr = use_udr, udr_lb = udr_lb, udr_ub = udr_ub, 
+                                  n_distr = udr_ndistr, vision=vision, use_pos_est=pose_est, pose_config=pose_config, 
+                                  pose_checkpoint=pose_checkpoint) for i in range(num_cpu)],
+                        start_method="fork",),
+                    n_stack=2),
+                os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv"))
+                
             else:
                 self.train_env=VecMonitor(
                     VecFrameStack(
                         SubprocVecEnv(
-                        [make_env(self.train_env_name, i,use_udr = use_udr, udr_lb = udr_lb, udr_ub = udr_ub, n_distr = udr_ndistr, vision=vision) for i in range(num_cpu)],
+                        [make_env(self.train_env_name, i,use_udr = use_udr, udr_lb = udr_lb, udr_ub = udr_ub, 
+                                  n_distr = udr_ndistr, vision=vision, use_pos_est=pose_est) for i in range(num_cpu)],
                         start_method="fork",),
                     n_stack=2),
                 os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv"))
@@ -75,7 +90,8 @@ class Model:
             print("using ",num_cpu," CPUs")
             self.train_env = VecMonitor(
                 SubprocVecEnv(
-                [make_env(self.train_env_name, i,use_udr = use_udr, udr_lb = udr_lb, udr_ub = udr_ub, n_distr = udr_ndistr, vision=vision) for i in range(num_cpu)],
+                [make_env(self.train_env_name, i,use_udr = use_udr, udr_lb = udr_lb, udr_ub = udr_ub, 
+                          n_distr = udr_ndistr, vision=vision, use_pos_est=pose_est) for i in range(num_cpu)],
                 start_method="fork",
             ),os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv"))
 

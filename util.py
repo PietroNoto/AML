@@ -253,9 +253,10 @@ class EvalOnTargetCallback(BaseCallback):
 from stable_baselines3.common.utils import set_random_seed
 import gym
 from CNN import VisionWrapper
+from estimator import PoseWrapper
 
 #vectorized environment
-def make_env(env_id: str, rank: int, seed: int = 0,use_udr = None, udr_lb = 1, udr_ub = 5, n_distr = 3, vision = False):
+def make_env(env_id: str, rank: int, seed: int = 0,use_udr = None, udr_lb = 1, udr_ub = 5, n_distr = 3, vision = False, use_pos_est = True, pose_config = "", pose_checkpoint = ""):
     """
     Utility function for multiprocessed env.
 
@@ -271,7 +272,7 @@ def make_env(env_id: str, rank: int, seed: int = 0,use_udr = None, udr_lb = 1, u
         elif use_udr == "finite":
             env.enable_finite_udr(udr_lb, udr_ub, n_distr)
         if vision:
-            env = VisionWrapper(env)
+            env = VisionWrapper(env) if not use_pos_est else PoseWrapper(env, pose_config, pose_checkpoint)
         else:
             env.reset()
         return env
