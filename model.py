@@ -14,117 +14,62 @@ from stable_baselines3.common.callbacks import EvalCallback,CheckpointCallback
 from util import linear_schedule, plot_results, EvalOnTargetCallback, make_env
 
 from stable_baselines3.common.vec_env import DummyVecEnv,SubprocVecEnv,VecFrameStack
+from gym.wrappers.frame_stack import FrameStack 
 from stable_baselines3.common.env_util import make_vec_env
-from CNN import VisionWrapper
-from estimator import PoseWrapper
+from wrappers import *
 
 class Model:
 
     def __init__(self, train_env_name: str,
                  test_env_name: str,
                  output_dir:str,
-                 use_udr = "",
-                 udr_lb = 1,
-                 udr_ub = 5,
-                 udr_ndistr = 3,
-                 vision=False,
-                 pose_est=False,
-                 pose_config="",
-                 pose_checkpoint=""):
+                 use_vec_env: bool,
+                 use_udr: bool,
+                 udr_type: str,
+                 udr_lb: float,
+                 udr_ub: float,
+                 udr_ndistr: int,
+                 udr_range: float,
+                 use_vision: bool,
+                 width: int,
+                 height: int,
+                 grayscale: bool,
+                 pose_est: bool,
+                 pose_config: str,
+                 pose_checkpoint: str):
         
-        self.output_dir = output_dir
-        self.log_dir=os.path.join(self.output_dir,"train_logs")
-        self.checkpoint_dir=os.path.join(self.output_dir,"checkpoints")
-        #self.src_flag=src_flag  # "source" oppure "target"
-        #os.makedirs(self.output_dir, exist_ok=True) #creata prima
-
         self.train_env_name = train_env_name
         self.test_env_name = test_env_name
+        self.output_dir = output_dir
         self.src_flag = "source" if self.train_env_name == "CustomHopper-source-v0" else "target"
-        self.udr_prefix = "udr_" if use_udr != "" else ""
-        self.vision = vision
+        self.use_vec_env = use_vec_env
+        self.use_vision = use_vision
         self.use_udr = use_udr
-        self.use_vec_env = True
+        self.udr_prefix = "udr_" if self.use_udr else ""
+        self.udr_type = udr_type
+        self.udr_lb = udr_lb
+        self.udr_ub = udr_ub
+        self.udr_ndistr = udr_ndistr
+        self.udr_range = udr_range
+        self.use_vision = use_vision
+        self.width = width
+        self.height = height
+        self.gray = grayscale
         self.use_pose_est = pose_est
-
-        num_cpu = os.cpu_count() 
-        """
-        self.train_env =VecMonitor(SubprocVecEnv(
-            [make_env(self.train_env_name, i,use_udr=use_udr,vision=vision ) for i in range(num_cpu)],
-            start_method="fork",
-        ),os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv"))
-        """
-        #Aggiungere supporto UDR
-        if self.use_vec_env and vision:
-            print("using ",num_cpu," CPUs")
-            if (pose_est):
-                """
-                self.train_env=make_vec_env(train_env_name,
-                    vec_env_cls=DummyVecEnv,
-                    n_envs=num_cpu,
-                    monitor_dir=os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log"),
-                    wrapper_class=lambda env: PoseWrapper(env, pose_config, pose_checkpoint)
-                )
-                """
-                
-                self.train_env=VecMonitor(
-                    VecFrameStack(
-                        SubprocVecEnv(
-                        [make_env(self.train_env_name, i,use_udr = use_udr, udr_lb = udr_lb, udr_ub = udr_ub, 
-                                  n_distr = udr_ndistr, vision=vision, use_pos_est=pose_est, pose_config=pose_config, 
-                                  pose_checkpoint=pose_checkpoint) for i in range(num_cpu)],
-                        start_method="fork",),
-                    n_stack=2),
-                os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv"))
-                
-            else:
-                self.train_env=VecMonitor(
-                    VecFrameStack(
-                        SubprocVecEnv(
-                        [make_env(self.train_env_name, i,use_udr = use_udr, udr_lb = udr_lb, udr_ub = udr_ub, 
-                                  n_distr = udr_ndistr, vision=vision, use_pos_est=pose_est) for i in range(num_cpu)],
-                        start_method="fork",),
-                    n_stack=2),
-                os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv"))
-        elif self.use_vec_env: # (and not vision)
-            print("using ",num_cpu," CPUs")
-            self.train_env = VecMonitor(
-                SubprocVecEnv(
-                [make_env(self.train_env_name, i,use_udr = use_udr, udr_lb = udr_lb, udr_ub = udr_ub, 
-                          n_distr = udr_ndistr, vision=vision, use_pos_est=pose_est) for i in range(num_cpu)],
-                start_method="fork",
-            ),os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv"))
-
-        """
-        self.train_env=make_vec_env(train_env_name,
-         vec_env_cls=SubprocVecEnv,
-         vec_env_kwargs=dict(start_method="fork"),
-         n_envs=num_cpu,
-         monitor_dir=os.path.join(self.output_dir,use_udr+self.src_flag+"_monitor_log"))
-        """
-
-        if not self.use_vec_env and vision:
-            self.train_env = VecMonitor(VecFrameStack(DummyVecEnv([lambda: VisionWrapper(gym.make(train_env_name))]),n_stack=2),
-                                    os.path.join(self.output_dir,use_udr+self.src_flag+"_monitor_log","monitor.csv"))
-            # incartiamo in un Monitor per evitare warning, ma non fa niente, c'é callback EvalOnTarget
-        elif not self.use_vec_env:
-            self.train_env = Monitor(gym.make(train_env_name),os.path.join(self.output_dir,use_udr+self.src_flag+"_monitor_log","monitor.csv"))
+        self.pose_config = pose_config
+        self.pose_checkpoint = pose_checkpoint
         
-        if vision:
-            self.test_env =VecMonitor(VecFrameStack(DummyVecEnv([lambda: VisionWrapper(gym.make(test_env_name))]),n_stack=2))
-            if pose_est:
-                self.test_env=make_vec_env(test_env_name,
-                                           vec_env_cls=DummyVecEnv,
-                                           n_envs=num_cpu,
-                                           wrapper_class=lambda env: PoseWrapper(env, pose_config, pose_checkpoint)
-        )
-        else:
-            self.test_env = Monitor(gym.make(test_env_name))
+        self.log_dir=os.path.join(self.output_dir,"train_logs")
+        self.checkpoint_dir=os.path.join(self.output_dir,"checkpoints")
         
-        #self.test_env = Monitor(VisionWrapper(gym.make(test_env_name)))
-
+        num_cpu = os.cpu_count() # //4
         
-
+        self.train_env = self.make_env(self.train_env_name)
+        self.test_env = self.make_env(self.test_env_name, True)
+        
+        if self.use_vec_env:
+            print("Using",num_cpu,"CPUs")
+        
         self.arch_name = None
         self.model = None
 
@@ -143,8 +88,8 @@ class Model:
         arch_name = "SAC_"
         arch_name += "s_" if self.src_flag == "source" else "t_"
         arch_name = arch_name + "lr_" + str(learning_rate) + '_steps_' + str(timesteps)
-        if self.use_udr != "":
-            arch_name += "_" + self.use_udr + "_UDR"
+        if self.use_udr:
+            arch_name += "_UDR"
 
         #callback che salva checkpoint
         checkpoint_callback = CheckpointCallback(
@@ -168,13 +113,13 @@ class Model:
             lr_schedule = learning_rate
         
         if self.model == None:
-            if self.vision == False:
+            if self.use_vision == False:
                 self.model = SAC(MlpPolicy, self.train_env, verbose = 1,
                                 learning_rate=lr_schedule,
                                 learning_starts=100,
                                 buffer_size=buffer_size,
                                 target_entropy= -3.0,
-                                **hyperparams) #,tensorboard_log=self.output_dir
+                                **hyperparams)
             else:
                 if self.use_pose_est:
                     self.model = SAC(MlpPolicy, self.train_env, verbose = 1,
@@ -206,63 +151,28 @@ class Model:
         self.train_env.close()
         self.test_env.close()
         #elif exists(arch_name):
-        #    self.model = SAC.load(arch_name)
-        #self.arch_name = arch_name
+        #self.model = SAC.load(arch_name)
+        #self.arch_name = arch_name  
 
-    def train_udr(self, arch_name = None, timesteps = 50000, n_distr = 3, **hyperparams):
-
-        if n_distr < 0:
-            return
-        elif arch_name is None: 
-            arch_name = "SAC_"
-            if self.train_env_name == "CustomHopper-source-v0":
-                arch_name += "s_"
-            elif self.train_env_name == "CustomHopper-target-v0":
-                arch_name += "t_"
-            arch_name = arch_name + str(hyperparams["learning_rate"]) + '_' + str(timesteps) + "_UDR"
-
-            self.model = SAC(MlpPolicy, self.train_env, verbose = 1,device='cuda', **hyperparams)
-            self.train_env.enable_udr()
-            #serve train_env reset ?
-            self.model.learn(total_timesteps = timesteps, log_interval = 20)
-            self.model.save(arch_name) 
-        elif exists(arch_name):
-            self.model = SAC.load(arch_name)
-        self.arch_name = arch_name    
-        
-
-    def test(self,test_env_name="CustomHopper-target-v0", n_eval = 50):
-
-        #if exists(self.arch_name):
-            #self.model = SAC.load(self.arch_name)
+    def test(self, n_eval = 50):
         if self.model!=None:
-            if self.vision:
-                test_env =VecMonitor(VecFrameStack(DummyVecEnv([lambda: VisionWrapper(gym.make(test_env_name))]),n_stack=2))
-                #test_env=Monitor(VisionWrapper(gym.make(test_env_name)))
-            else:
-                test_env=Monitor(gym.make(test_env_name))
             #self.test_env.reset()
-            test_env.reset()
-            mean_reward, std_reward = evaluate_policy(self.model, test_env, n_eval_episodes = n_eval, deterministic = True)
+            mean_reward, std_reward = evaluate_policy(self.model, self.test_env, n_eval_episodes = n_eval, deterministic = True)
             print(f"mean_reward={mean_reward:.2f} +/- {std_reward:.2f}")
-            test_env.close()
+            self.test_env.close()
             return mean_reward, std_reward
         else:
             print("Model not loaded!")
             return -1,-1
 
     def plot_results(self):
-        #e = "s" if self.test_env_name == "CustomHopper-source-v0" else "t"
-        #filename = self.arch_name[:5] + e + self.arch_name[5:]
-        #filename="source_train_plot" if self.train_env_name == "CustomHopper-source-v0" else "target_train_plot"
-        #train_env="source" if self.train_env_name == "CustomHopper-source-v0" else "target_train_plot"
         plot_results(log_folder=self.output_dir,train_env=self.src_flag,udr_prefix=self.udr_prefix)
 
 
 
 #NON IN USO: serve a valutare su target_env se alleniamo su source e salvare il miglior modello
         #salva in file evaluations.npz che potremmo leggere per fare un altra linea del grafico
-        #purtroppo sminchia l'output del custom logger, dovremmo risolvere
+        #purtroppo rompe l'output del custom logger, dovremmo risolvere
         """
         eval_callback = EvalCallback(self.test_env,
                             best_model_save_path=self.checkpoint_dir,
@@ -270,3 +180,70 @@ class Model:
                             eval_freq=10,
                             deterministic=True, render=False)
         """
+        
+    def make_env(self, base, test=False):
+        num_cpu = os.cpu_count() or 1
+        env_kwargs = dict(use_udr = self.use_udr and not test,
+                          udr_type = self.udr_type,
+                          udr_lb = self.udr_lb,
+                          udr_ub = self.udr_ub,
+                          n_distr = self.udr_ndistr,
+                          udr_range = self.udr_range,
+                          use_vision = self.use_vision and not (test and self.use_pose_est),
+                          w = self.width,
+                          h = self.height,
+                          gray = self.gray,
+                          use_pose_est = self.use_pose_est and not test,
+                          pose_config = self.pose_config,
+                          pose_checkpoint = self.pose_checkpoint)
+        monitor_path = os.path.join(self.output_dir,self.udr_prefix+self.src_flag+"_monitor_log","monitor.csv") if not test else None
+
+        if self.use_vec_env:
+            env_array = [make_env(base,i,**env_kwargs) for i in range(num_cpu)]
+        else:
+            env = make_env(base,0,**env_kwargs)
+        if self.use_vision:
+            if self.use_pose_est:
+                if self.use_vec_env:
+                    return VecMonitor(
+                        SubprocVecEnv(env_array),
+                        monitor_path
+                    )
+                else:
+                    return VecMonitor(
+                        DummyVecEnv([env]),
+                        monitor_path
+                    )
+            else:
+                if self.use_vec_env:
+                    return VecMonitor(
+                        VecFrameStack(
+                            SubprocVecEnv(env_array),
+                            n_stack=2
+                        ),
+                        monitor_path
+                    )
+                else:
+                    return VecMonitor(
+                        VecFrameStack(
+                            DummyVecEnv([env]),
+                            n_stack=2
+                        ),
+                        monitor_path
+                    )
+        else:
+            if self.use_vec_env:
+                return VecMonitor(
+                    SubprocVecEnv(env_array),
+                    monitor_path)
+            else:
+                return Monitor(env(), monitor_path)
+
+    def change_env(self, scope, base):
+        if scope == "train":
+            self.src_flag = "source" if base == "CustomHopper-source-v0" else "target"
+            self.train_env_name = base
+            self.train_env = self.make_env(base)
+        else:
+            self.test_env_name = base
+            self.test_env = self.make_env(base, True)

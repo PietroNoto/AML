@@ -252,29 +252,38 @@ class EvalOnTargetCallback(BaseCallback):
 
 from stable_baselines3.common.utils import set_random_seed
 import gym
-from CNN import VisionWrapper
-from estimator import PoseWrapper
+from wrappers import *
 
 #vectorized environment
-def make_env(env_id: str, rank: int, seed: int = 0,use_udr = None, udr_lb = 1, udr_ub = 5, n_distr = 3, vision = False, use_pos_est = True, pose_config = "", pose_checkpoint = ""):
-    """
-    Utility function for multiprocessed env.
-
-    :param env_id: the environment ID
-    :param num_env: the number of environments you wish to have in subprocesses
-    :param seed: the inital seed for RNG
-    :param rank: index of the subprocess
-    """
+def make_env(env_id: str,
+             rank: int,
+             use_udr: bool,
+             udr_type: str,
+             udr_lb: float,
+             udr_ub: float,
+             n_distr: int,
+             udr_range: float,
+             use_vision: bool,
+             w: int,
+             h: int,
+             gray: bool,
+             use_pose_est: bool,
+             pose_config: str,
+             pose_checkpoint: str,
+             seed: int = 0):
+    
     def _init():
-        env = gym.make(env_id) #, render_mode="human"
-        if use_udr == "infinite":
-            env.enable_infinite_udr(udr_lb, udr_ub)
-        elif use_udr == "finite":
-            env.enable_finite_udr(udr_lb, udr_ub, n_distr)
-        if vision:
-            env = VisionWrapper(env) if not use_pos_est else PoseWrapper(env, pose_config, pose_checkpoint)
-        else:
-            env.reset()
+        env = gym.make(env_id)
+        if use_udr:
+            if udr_type == "finite":
+                env.enable_finite_udr(udr_lb, udr_ub, n_distr)
+            elif udr_type == "infinite":
+                env.enable_infinite_udr(udr_range)
+        if use_vision:
+            if use_pose_est:
+                env = PoseWrapper(env, pose_config, pose_checkpoint)
+            else:
+                env = VisionWrapper(env, w, h, gray)
         return env
     set_random_seed(seed+rank)
     return _init

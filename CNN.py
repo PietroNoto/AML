@@ -1,33 +1,23 @@
-from gym import Wrapper, spaces
-import cv2
-import numpy as np
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+from gym.spaces import Box
+from models.mobilenet import get_model
+import torch
 
-class VisionWrapper(Wrapper):
+class CustomCNN(BaseFeaturesExtractor):
+    """
+    :param observation_space: (gym.Space)
+    :param features_dim: (int) Number of features extracted.
+        This corresponds to the number of unit for the last layer.
+    """
 
-    def __init__(self, env):
-        super().__init__(env)
-        self.env.reset()
-        self.width=84
-        self.height=84
-        dummy_obs = self.env.render("rgb_array", width=self.width, height=self.height)
-        #dummy_obs=cv2.cvtColor(dummy_obs, cv2.COLOR_RGB2GRAY)
-        #dummy_obs=np.expand_dims(dummy_obs, axis=-1)
-        self._observation_space = spaces.Box(low=0, high=255, shape=dummy_obs.shape, dtype=dummy_obs.dtype)
-
-    def reset(self, **kwargs):
-        self.env.reset(**kwargs)
-        obs = self.env.render("rgb_array", width=self.width, height=self.height)
-        return obs
-
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        obs = self.env.render("rgb_array", width=self.width, height=self.height)
-        #obs=cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
-        #obs=np.expand_dims(obs, axis=-1)
-        return obs, reward, done, info
-
-#cose da provare
-# - dimensioni dell'immagine [224,84,...]
-# - normalizzazione [0-1]
-# - grayscale ?
-# - stacking, first last dimension
+    def __init__(self, observation_space: Box):
+        super().__init__(observation_space, features_dim)
+        n_input_channels = observation_space.shape[0]
+        self.model=get_model(num_classes=11, sample_size=n_input_channels, width_mult=2.)
+        checkpoint = torch.load("/mnt/c/Users/utente/Downloads/jester_mobilenet_2.0x_RGB_16_best.pth",map_location=torch.device("cpu"))
+        model.load_state_dict(checkpoint['state_dict'])
+        model.eval()
+        #settare train sull'ultimo layer
+    
+    def forward(self, observations: torch.Tensor) -> torch.Tensor:
+        return self.model(observations)

@@ -52,7 +52,8 @@ model = dict(
         init_cfg=dict(
             type='Pretrained',
             checkpoint='https://download.openmmlab.com/mmpose/'
-            'pretrain_models/scnet50-7ef0a199.pth'),
+            'pretrain_models/scnet50-7ef0a199.pth',
+            flip_test=False),
     ),
     head=dict(
         type='HeatmapHead',

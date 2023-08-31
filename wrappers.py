@@ -1,7 +1,55 @@
+from gym import Wrapper, spaces
+from gym.wrappers.pixel_observation import PixelObservationWrapper
+import cv2
+import numpy as np
 from mmpose.apis import MMPoseInferencer
 from math import atan2, pi
-import numpy as np
-from gym import Wrapper, spaces
+
+class VisionWrapper(Wrapper):
+
+    def __init__(self, env, w, h, gray):
+        super().__init__(env)
+        self.env.reset()
+        self.width=w
+        self.height=h
+        self.grayscale=gray
+        dummy_obs = self.env.render("rgb_array", width=self.width, height=self.height)
+        if (self.grayscale):
+            dummy_obs=cv2.cvtColor(dummy_obs, cv2.COLOR_RGB2GRAY)
+            dummy_obs=np.expand_dims(dummy_obs, axis=-1)
+        self._observation_space = spaces.Box(low=0, high=255, shape=dummy_obs.shape, dtype=dummy_obs.dtype)
+
+    def reset(self, **kwargs):
+        self.env.reset(**kwargs)
+        obs = self.env.render("rgb_array", width=self.width, height=self.height)
+        if (self.grayscale):
+            obs=cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
+            obs=np.expand_dims(obs, axis=-1)
+        return obs
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        obs = self.env.render("rgb_array", width=self.width, height=self.height)
+        if (self.grayscale):
+            obs=cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
+            obs=np.expand_dims(obs, axis=-1)
+        return obs, reward, done, info
+
+"""
+class VisionWrapper(PixelObservationWrapper):
+    def __init__(self, env, w, h, gray):
+        super().__init__(env, True, dict(width=w, height=h))
+        self.grayscale = gray
+        shape = (w, h, 3) if not gray else (w, h, 1)
+        self._observation_space = spaces.Box(low=0, high=255, shape=shape, dtype=np.int8)
+    
+    def observation(self, observation):
+        obs = super().observation(observation)["pixels"]
+        if (self.grayscale):
+            gr=cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
+            obs=np.expand_dims(gr, axis=-1)
+        return obs
+"""        
 
 class ImgAnalyzer:
     def __init__(self, n_points, mmpose_config, checkpoint):
@@ -65,24 +113,13 @@ class ImgAnalyzer:
         points = np.ravel(res["predictions"][0][0]["keypoints"])
         return self.points_to_obs(points)
     
-class PoseWrapper(Wrapper):
-
+class PoseWrapper(PixelObservationWrapper):
+    
     def __init__(self, env, config, checkpoint):
-        super().__init__(env)
+        super().__init__(env, True, dict(width=224, height=224))
         self.estimator = ImgAnalyzer(5, config, checkpoint)
         self.env.reset()
-        self.width=224
-        self.height=224
-
-    def reset(self):
-        super().reset()
-        self.env.reset()
-        img = self.env.render("rgb_array", width=self.width, height=self.height)
-        obs = self.estimator.produce_obs(img)
-        return obs
-
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        img = self.env.render("rgb_array", width=self.width, height=self.height)
-        obs = self.estimator.produce_obs(img)
-        return obs, reward, done, info 
+        self._observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(11,))
+    
+    def observation(self, observation):
+        return self.estimator.produce_obs(super().observation(observation)['pixels'])
