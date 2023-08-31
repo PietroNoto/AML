@@ -20,9 +20,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=str, help='Path where the model is saved', default = "output")
     parser.add_argument("--test-eps", type=int, help='Number of test episodes', default=50)
-    parser.add_argument("--lr", type=float, help='starting learning rate', default=1e-3)
-    parser.add_argument("--timesteps", type=int, help='number of max timesteps', default=100_000)
-    parser.add_argument("--use-udr", type=str,choices=["only","both","no"], help='use udr', default="no")
+    parser.add_argument("--lr", type=float, help='starting learning rate', default=3e-3)
+    parser.add_argument("--timesteps", type=int, help='number of max timesteps', default=20_000)
+    parser.add_argument("--use-udr", type=str,choices=["only","both","no"], help='use udr', default="only")
     parser.add_argument("--udr-type", type = str, choices = ["finite", "infinite"], help = "Type of UDR technique", default = "infinite")
     parser.add_argument("--udr-lower-bound", type = int, help = "udr lower bound", default = 1)
     parser.add_argument("--udr-upper-bound", type = int, help = "udr upper bound", default = 3)
@@ -33,8 +33,8 @@ if __name__ == '__main__':
     parser.add_argument("--buffer-size", type=int, help='buffer size', default=1_000_000)
     parser.add_argument("--lr-scheduling", type=str, help='learning rate scheduling', default="constant",
                         choices=["constant","linear"]) #aggiungere "cosine"
-    parser.add_argument("--use-vision", type=bool, help='change observation space to pixels', default=False)
-    parser.add_argument("--use-pose-est", type=bool, help="use a custom pose estimation network", default=True)
+    parser.add_argument("--use-vision", type=bool, help='change observation space to pixels', default=True)
+    parser.add_argument("--use-pose-est", type=bool, help="use a custom pose estimation network", default=False)
     parser.add_argument("--mmpose-config", type=str, help="path of mmpose config", default="")
     parser.add_argument("--mmpose-checkpoint", type=str, help="path of mmpose checkpoint", default="")
 
@@ -130,7 +130,9 @@ if __name__ == '__main__':
     
         #Source-source using UDR
         print("Source-source with UDR:")
-        s_udr = Model(source_env_name, target_env_name, output_dir, use_udr = udr_type, udr_lb = udr_lb, udr_ub = udr_ub, udr_ndistr = n_distr)
+        s_udr = Model(source_env_name, target_env_name, output_dir, use_udr=use_udr, udr_lb=udr_lb, 
+                      udr_ub=udr_ub, udr_ndistr=n_distr,vision=args.use_vision, pose_est=pose_est, 
+                        pose_config=pose_config, pose_checkpoint=pose_checkpoint)
         
         if args.checkpoint!=None: #non l'ho ancora testato, serve ad allenare a partire da un checkpoint
             s_udr.load_model(args.checkpoint)
