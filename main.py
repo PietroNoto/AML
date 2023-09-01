@@ -75,11 +75,10 @@ if __name__ == '__main__':
         os.mkdir(output_dir)
         os.mkdir(checkpoints_dir)
         os.mkdir(logs_dir)
+    elif len(os.listdir(output_dir)) > 0:
+        raise FileExistsError('Output dir contains files')
     else:
-        if len(os.listdir(output_dir)) > 0:
-            raise FileExistsError('Output dir contains files')
-        else:
-            os.mkdir(checkpoints_dir)
+        os.mkdir(checkpoints_dir)
 
     #stampa file con gli iperparametri
     with open(os.path.join(output_dir,'params.txt'), 'w') as param_file:
@@ -98,11 +97,11 @@ if __name__ == '__main__':
             param_str+=f"\n---use udr: {str(use_udr)}"+\
                 f"\nudr type: {udr_type}"
             if udr_type == "finite":
-                param_str+=f"udr lower bound: {str(udr_lb)}"+\
-                f"udr upper bound: {str(udr_ub)}"+\
-                f"udr distr n: {str(n_distr)}"
+                param_str+=f"\nudr lower bound: {str(udr_lb)}"+\
+                f"\nudr upper bound: {str(udr_ub)}"+\
+                f"\nudr distr n: {str(n_distr)}"
             if udr_type == "infinite":
-                param_str+=f"udr range: {str(udr_range)}"
+                param_str+=f"\nudr range: {str(udr_range)}"
         if use_vision:
             param_str+=f"\n---use vision: {str(use_vision)}"+\
             f"\nimage width: {str(width)}"+\
@@ -135,25 +134,25 @@ if __name__ == '__main__':
         model = Model(train_env_name=source_env_name,
                       test_env_name=target_env_name,
                       **model_kwargs)
-        if args.checkpoint!=None:
+        if args.checkpoint != None:
             model.load_model(args.checkpoint)
         print("Source-target:")
         model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling,buffer_size=args.buffer_size)
         model.plot_results()
         st_mean_rew, st_std_rew = model.test(n_eval=n_test_eps)
-        test_fp.write("Source-target: "+f"mean_reward={st_mean_rew:.2f} +/- {st_std_rew:.2f}")
+        test_fp.write("Source-target: " + f"mean_reward={st_mean_rew:.2f} +/- {st_std_rew:.2f}")
 
         print("Source-source:")
         model.change_env("test", source_env_name)
         ss_mean_rew, ss_std_rew = model.test(n_test_eps)
-        test_fp.write("\nSource-source: "+f"mean_reward={ss_mean_rew:.2f} +/- {ss_std_rew:.2f}")
+        test_fp.write("\nSource-source: " + f"mean_reward={ss_mean_rew:.2f} +/- {ss_std_rew:.2f}")
 
         if (eval_tt):
             print("Target-target:")
             model = Model(train_env_name=target_env_name,
                         test_env_name=target_env_name,
                         **model_kwargs)
-            if args.checkpoint!=None:
+            if args.checkpoint != None:
                 model.load_model(args.checkpoint.replace("source","target"))
             model.train(timesteps=n_timesteps, learning_rate = lr,lr_schedule=args.lr_scheduling,buffer_size=args.buffer_size)
             model.plot_results()

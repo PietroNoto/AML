@@ -14,7 +14,6 @@ from stable_baselines3.common.callbacks import EvalCallback,CheckpointCallback
 from util import linear_schedule, plot_results, EvalOnTargetCallback, make_env
 
 from stable_baselines3.common.vec_env import DummyVecEnv,SubprocVecEnv,VecFrameStack
-from gym.wrappers.frame_stack import FrameStack 
 from stable_baselines3.common.env_util import make_vec_env
 from wrappers import *
 
@@ -62,7 +61,7 @@ class Model:
         self.log_dir=os.path.join(self.output_dir,"train_logs")
         self.checkpoint_dir=os.path.join(self.output_dir,"checkpoints")
         
-        num_cpu = os.cpu_count() # //4
+        num_cpu = os.cpu_count()
         
         self.train_env = self.make_env(self.train_env_name)
         self.test_env = self.make_env(self.test_env_name, True)
@@ -107,33 +106,15 @@ class Model:
             callbacks.append(eval_target_callback)
         callbacks.append(checkpoint_callback)
 
-        if lr_schedule == "linear":
-            lr_schedule = linear_schedule(learning_rate) #eventualmente aggiungere coseno
-        else:
-            lr_schedule = learning_rate
+        lr_schedule = linear_schedule(learning_rate) if lr_schedule == "linear" else learning_rate
         
         if self.model == None:
-            if self.use_vision == False:
-                self.model = SAC(MlpPolicy, self.train_env, verbose = 1,
-                                learning_rate=lr_schedule,
-                                learning_starts=100,
-                                buffer_size=buffer_size,
-                                target_entropy= -3.0,
-                                **hyperparams)
-            else:
-                if self.use_pose_est:
-                    self.model = SAC(MlpPolicy, self.train_env, verbose = 1,
-                                learning_rate=lr_schedule,
-                                learning_starts=100,
-                                buffer_size=buffer_size,
-                                target_entropy= -3.0,
-                                **hyperparams)
-                else:
-                    self.model = SAC(CnnPolicy, self.train_env, verbose = 1,
-                                learning_rate=lr_schedule,
-                                learning_starts=100,
-                                buffer_size=10_000,
-                                target_entropy= -3.0,
+            policy = CnnPolicy if (self.use_vision and not self.use_pose_est) else MlpPolicy
+            self.model = SAC(policy, self.train_env, verbose = 1,
+                                learning_rate = lr_schedule,
+                                learning_starts = 100,
+                                buffer_size = buffer_size,
+                                target_entropy = -3.0,
                                 **hyperparams)
         
         custom_logger = configure(self.log_dir, ["csv"])
@@ -168,9 +149,7 @@ class Model:
     def plot_results(self):
         plot_results(log_folder=self.output_dir,train_env=self.src_flag,udr_prefix=self.udr_prefix)
 
-
-
-#NON IN USO: serve a valutare su target_env se alleniamo su source e salvare il miglior modello
+        #NON IN USO: serve a valutare su target_env se alleniamo su source e salvare il miglior modello
         #salva in file evaluations.npz che potremmo leggere per fare un altra linea del grafico
         #purtroppo rompe l'output del custom logger, dovremmo risolvere
         """
@@ -180,7 +159,7 @@ class Model:
                             eval_freq=10,
                             deterministic=True, render=False)
         """
-        
+
     def make_env(self, base, test=False):
         num_cpu = os.cpu_count() or 1
         env_kwargs = dict(use_udr = self.use_udr and not test,

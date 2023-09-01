@@ -1,5 +1,0 @@
-lr: 0.00073
-total steps: 100000
-source env: CustomHopper-source-v0
-target env: CustomHopper-target-v0
-use udr: False

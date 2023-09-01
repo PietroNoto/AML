@@ -1,9 +1,0 @@
-CustomHopper-source-v0:
-  learning_rate: lin_7.3e-4
-  n_timesteps: 50000
-  policy: 'MlpPolicy'
-
-CustomHopper-target-v0:
-  learning_rate: lin_7.3e-4
-  n_timesteps: 50000
-  policy: 'MlpPolicy'

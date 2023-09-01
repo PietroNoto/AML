@@ -1,5 +1,6 @@
 __pycache__/
 work_dirs/**
 *.pth
-trained_2M/**
+trained_2M
 vision/mmpose
+results/
