@@ -70,40 +70,23 @@ def plot2mln():
 
 if __name__ == '__main__':
 
-    hyp_opt_dir="hyp_opt_lr_3"
+    ss_log_path_1=os.path.join("","train_logs" ,'source_train_log.csv' )
+    st_log_path_1=os.path.join("","train_logs" ,'st_eval_log.csv' )
+    tt_log_path_1=os.path.join("","train_logs",'target_train_log.csv' )
 
-    lrs=[]
-    ss_rew=[]
-    st_rew=[]
-    tt_rew=[]
-
-    for curr_dir in os.listdir(hyp_opt_dir):
-        if os.path.isdir(os.path.join(hyp_opt_dir,curr_dir)):
-            lrs.append(float(curr_dir[3:]))
-            print(curr_dir)
-            with open(os.path.join(hyp_opt_dir,curr_dir,"test_results.txt")) as res_file:
-                lines=res_file.readlines()
-                print(lines)
-                ss_curr_rew,ss_curr_std=lines[0].split('=')[1].split('+/-')
-                ss_rew.append(float(ss_curr_rew))
-                st_curr_rew,st_curr_std=lines[1].split('=')[1].split('+/-')
-                st_rew.append(float(st_curr_rew))
-                #tt_curr_rew,tt_curr_std=lines[2].split('=')[1].split('+/-')
-                #tt_rew.append(float(tt_curr_rew))
-    sort_val=np.array([list(e) for e in zip(lrs,ss_rew,st_rew)])
-    sort_val=sort_val[sort_val[:,0].argsort()]
-    #sort_val=np.sort([list(e) for e in zip(lrs,ss_rew,st_rew)],axis=0) #,tt_rew
-    print(sort_val)
+    ss_df = pandas.read_csv(ss_log_path_1)
+    st_df = pandas.read_csv(st_log_path_1)
+    tt_df = pandas.read_csv(tt_log_path_1)
 
     fig,ax = plt.subplots()
-    ax.plot(sort_val[:,0],sort_val[:,1])
-    ax.set_xscale('log')
-    ax.set_xlabel('learning rates')
-    ax.set_ylabel('source mean reward')
-    ax.set_title("learning rate optimization")
+    ax.plot(ss_df["time/total_timesteps"],ss_df["rollout/ep_rew_mean"],label="source-source")
+
+    ax.plot(st_df["time/total_timesteps"],moving_average(st_df["eval/mean_reward"],10),label="source-target")
+
+    ax.plot(tt_df["time/total_timesteps"],tt_df["rollout/ep_rew_mean"],label="target-target")
+
+    ax.set_xlabel('timesteps')
+    ax.set_ylabel('mean episode rewards')
+    ax.set_title("learning curve")
+    ax.legend()
     plt.show()
-
-
-
-
-

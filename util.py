@@ -39,7 +39,7 @@ def moving_average(values, window):
     :return: (numpy array)
     """
     weights = np.repeat(1.0, window) / window
-    return np.convolve(values, weights, 'same')
+    return np.convolve(values, weights, 'valid')
 
 
 def plot_results(log_folder,train_env,udr_prefix):
