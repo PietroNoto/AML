@@ -1,5 +1,5 @@
-DATA_PATH = '/mnt/c/Users/Matteo/Documents/Blender/hopper/'
-PROJECT_PATH = '/mnt/c/Users/Matteo/Documents/Poli/AML 2/vision/'
+DATA_PATH = ''
+PROJECT_PATH = ''
 
 _base_ = ['./mmpose/configs/_base_/default_runtime.py']
 
